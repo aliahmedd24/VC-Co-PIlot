@@ -5,11 +5,16 @@ from pgvector.sqlalchemy import Vector
 from sqlalchemy import Enum, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import JSON
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.workspace import Workspace
+
+
+# Use JSONB on PostgreSQL, generic JSON on others (SQLite)
+JSON_TYPE = JSON().with_variant(JSONB, "postgresql")
 
 
 class DocumentType(str, PyEnum):
@@ -34,14 +39,18 @@ class Document(Base, UUIDMixin, TimestampMixin):
         ForeignKey("workspaces.id", ondelete="CASCADE"), index=True
     )
     name: Mapped[str] = mapped_column(String(255))
-    type: Mapped[DocumentType] = mapped_column(Enum(DocumentType), default=DocumentType.OTHER)
+    type: Mapped[DocumentType] = mapped_column(
+        Enum(DocumentType, native_enum=False), default=DocumentType.OTHER
+    )
     mime_type: Mapped[str] = mapped_column(String(100))
     size: Mapped[int] = mapped_column(Integer)
     storage_key: Mapped[str] = mapped_column(String(500))
     status: Mapped[DocumentStatus] = mapped_column(
-        Enum(DocumentStatus), default=DocumentStatus.PENDING
+        Enum(DocumentStatus, native_enum=False), default=DocumentStatus.PENDING
     )
-    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSON_TYPE, nullable=True
+    )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     workspace: Mapped["Workspace"] = relationship(back_populates="documents")
@@ -60,9 +69,14 @@ class DocumentChunk(Base, UUIDMixin, TimestampMixin):
         ForeignKey("ventures.id", ondelete="CASCADE"), index=True
     )
     content: Mapped[str] = mapped_column(Text)
-    embedding: Mapped[list[float] | None] = mapped_column(Vector(1536), nullable=True)
+    # Use generic JSON for vector embedding on SQLite, Vector on Postgres
+    embedding: Mapped[list[float] | None] = mapped_column(
+        JSON().with_variant(Vector(1536), "postgresql"), nullable=True
+    )
     chunk_index: Mapped[int] = mapped_column(Integer)
-    metadata_: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
+    metadata_: Mapped[dict[str, Any] | None] = mapped_column(
+        "metadata", JSON_TYPE, nullable=True
+    )
 
     document: Mapped["Document"] = relationship(back_populates="chunks")
 

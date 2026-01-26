@@ -2,7 +2,8 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
@@ -39,6 +40,18 @@ app = FastAPI(
     docs_url=f"{settings.api_prefix}/docs",
     lifespan=lifespan,
 )
+
+@app.exception_handler(500)
+async def internal_exception_handler(request: Request, exc: Exception):
+    import traceback
+    import sys
+    print(f"Global 500 Handler Caught: {exc}", file=sys.stderr, flush=True)
+    traceback.print_exc(file=sys.stderr)
+    return JSONResponse(
+        status_code=500,
+        content={"message": "Internal Server Error"},
+    )
+
 
 app.add_middleware(
     CORSMiddleware,

@@ -2,10 +2,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import uuid4
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 
@@ -14,8 +14,6 @@ from app.config import settings
 from app.models.user import User
 
 router = APIRouter()
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class Token(BaseModel):
@@ -40,11 +38,13 @@ class UserResponse(BaseModel):
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
 
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -88,24 +88,35 @@ async def login(
     db: DbSession,
 ) -> Token:
     """Login and get access token."""
-    result = await db.execute(select(User).where(User.email == form_data.username))
-    user = result.scalar_one_or_none()
+    import sys
+    import traceback
+    try:
+        print(f"DEBUG: Login attempt for {form_data.username}", file=sys.stderr)
+        result = await db.execute(select(User).where(User.email == form_data.username))
+        user = result.scalar_one_or_none()
+        print(f"DEBUG: User found: {user}", file=sys.stderr)
 
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        if not user or not verify_password(form_data.password, user.hashed_password):
+            print("DEBUG: Password mismatch", file=sys.stderr)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user",
-        )
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Inactive user",
+            )
 
-    access_token = create_access_token(data={"sub": user.id})
-    return Token(access_token=access_token)
+        access_token = create_access_token(data={"sub": user.id})
+        print("DEBUG: Token created", file=sys.stderr)
+        return Token(access_token=access_token)
+    except Exception as e:
+        print(f"DEBUG: Login Error: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise e
 
 
 @router.get("/me", response_model=UserResponse)

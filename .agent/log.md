@@ -133,3 +133,64 @@ Phase 2 options per PRD.md Section 16:
 
 ---
 
+## Session: 2026-01-26
+
+### Context
+- Starting point: Backend and frontend implemented, but frontend-backend connection failing
+- Goal: Fix API connectivity issues between Next.js frontend and FastAPI backend
+
+### Issues Identified
+
+| Issue | Location | Root Cause |
+|-------|----------|------------|
+| Registration fails | `frontend/app/register/page.tsx` | Sends `full_name` but backend expects `name` |
+| Chat not working | `frontend/app/(dashboard)/chat/page.tsx` | Calls `/chat/send` (doesn't exist) instead of session-based API |
+| Documents list empty | `frontend/app/(dashboard)/documents/page.tsx` | Expects array but backend returns `{ documents: [...] }` |
+
+### Work Completed
+
+**1. Fixed Registration Field Mismatch**
+- File: `frontend/app/register/page.tsx`
+- Changed: `full_name: fullName` → `name: fullName`
+- Reason: Backend `UserRegister` schema expects `name` field
+
+**2. Fixed Chat Page API Flow**
+- File: `frontend/app/(dashboard)/chat/page.tsx`
+- Changed: Complete rewrite of message handling
+- Old: `POST /chat/send` (non-existent endpoint)
+- New: Proper session-based flow:
+  1. `GET /chat/sessions?workspace_id=default` to list sessions
+  2. `POST /chat/sessions?workspace_id=default` to create session
+  3. `POST /chat/sessions/{id}/messages` to send message
+- Added session state management and error handling
+
+**3. Fixed Documents Response Handling**
+- File: `frontend/app/(dashboard)/documents/page.tsx`
+- Changed: `response.data` → `response.data.documents || []`
+- Reason: Backend `DocumentListResponse` returns `{ documents: [...], total: int }`
+
+**4. Created Frontend Environment File**
+- Created: `frontend/.env.local`
+- Content: `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1`
+
+### Files Modified
+- `frontend/app/register/page.tsx` — Fixed registration field name
+- `frontend/app/(dashboard)/chat/page.tsx` — Rewrote with session management
+- `frontend/app/(dashboard)/documents/page.tsx` — Fixed response parsing
+- `frontend/.env.local` — Created with API URL config
+
+### Architecture Notes
+- Backend CORS configured for `http://localhost:3000` (correct)
+- Frontend API client uses Axios with token interceptor
+- Auth tokens stored in localStorage
+- Backend uses OAuth2PasswordRequestForm (expects `username` field, frontend correctly sends email as username)
+
+### Verification Steps
+1. Start backend: `cd backend && poetry run uvicorn app.main:app --reload`
+2. Start frontend: `cd frontend && npm run dev`
+3. Test registration at http://localhost:3000/register
+4. Test login at http://localhost:3000/login
+5. Test chat at http://localhost:3000/chat
+
+---
+

@@ -4,11 +4,16 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import Enum, Float, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import JSON
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.venture import Venture
+
+
+# Use JSONB on PostgreSQL, generic JSON on others (SQLite)
+JSON_TYPE = JSON().with_variant(JSONB, "postgresql")
 
 
 class KGEntityType(str, PyEnum):
@@ -36,11 +41,13 @@ class KGEntity(Base, UUIDMixin, TimestampMixin):
     venture_id: Mapped[str] = mapped_column(
         ForeignKey("ventures.id", ondelete="CASCADE"), index=True
     )
-    type: Mapped[KGEntityType] = mapped_column(Enum(KGEntityType), index=True)
-    status: Mapped[KGEntityStatus] = mapped_column(
-        Enum(KGEntityStatus), default=KGEntityStatus.NEEDS_REVIEW
+    type: Mapped[KGEntityType] = mapped_column(
+        Enum(KGEntityType, native_enum=False), index=True
     )
-    data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    status: Mapped[KGEntityStatus] = mapped_column(
+        Enum(KGEntityStatus, native_enum=False), default=KGEntityStatus.NEEDS_REVIEW
+    )
+    data: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict)
     confidence: Mapped[float] = mapped_column(Float, default=0.5)
 
     venture: Mapped["Venture"] = relationship(back_populates="entities")
@@ -75,7 +82,7 @@ class KGRelation(Base, UUIDMixin, TimestampMixin):
         ForeignKey("kg_entities.id", ondelete="CASCADE"), index=True
     )
     relation_type: Mapped[str] = mapped_column(String(100))
-    data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    data: Mapped[dict[str, Any] | None] = mapped_column(JSON_TYPE, nullable=True)
 
 
 class KGEventType(str, PyEnum):
@@ -95,8 +102,8 @@ class KGEvent(Base, UUIDMixin, TimestampMixin):
         ForeignKey("ventures.id", ondelete="CASCADE"), index=True
     )
     entity_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
-    event_type: Mapped[KGEventType] = mapped_column(Enum(KGEventType))
-    data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    event_type: Mapped[KGEventType] = mapped_column(Enum(KGEventType, native_enum=False))
+    data: Mapped[dict[str, Any]] = mapped_column(JSON_TYPE, default=dict)
     agent_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     user_id: Mapped[str | None] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"), nullable=True
