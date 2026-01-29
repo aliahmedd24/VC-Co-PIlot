@@ -53,12 +53,49 @@ class MarketResearchAgent(BaseAgent):
         super().__init__(brain)
         self.llm = llm or get_llm_client("claude")
 
+    def get_default_tools(self) -> list[str]:
+        """Get tools for market research.
+
+        Returns:
+            List of tool names for market research
+        """
+        return ["web_search", "query_knowledge_graph", "extract_entities"]
+
+    def _get_system_prompt(self) -> str:
+        """Get the market research system prompt.
+
+        Returns:
+            System prompt for market research
+        """
+        return MARKET_RESEARCH_SYSTEM_PROMPT
+
     async def execute(
         self,
         message: str,
         context: dict[str, Any] | None = None,
     ) -> AgentResponse:
-        """Execute market research.
+        """Execute market research with tool support.
+
+        Args:
+            message: Research request or question.
+            context: Optional additional context.
+
+        Returns:
+            AgentResponse with research, citations, and suggested KG updates.
+        """
+        # Use tool-enabled execution for enhanced research capabilities
+        return await self.execute_with_tools(
+            message=message,
+            context=context,
+            max_iterations=7  # Market research may need more iterations
+        )
+
+    async def execute_legacy(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+    ) -> AgentResponse:
+        """Legacy execution method without tools (kept for backward compatibility).
 
         Args:
             message: Research request or question.

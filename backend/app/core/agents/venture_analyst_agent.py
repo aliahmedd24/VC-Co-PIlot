@@ -52,12 +52,28 @@ class VentureAnalystAgent(BaseAgent):
         super().__init__(brain)
         self.llm = llm or get_llm_client("claude")
 
+    def get_default_tools(self) -> list[str]:
+        """Get tools for venture analysis.
+
+        Returns:
+            List of tool names for venture analysis
+        """
+        return ["web_search", "calculator", "query_knowledge_graph", "extract_entities"]
+
+    def _get_system_prompt(self) -> str:
+        """Get the venture analyst system prompt.
+
+        Returns:
+            System prompt for venture analysis
+        """
+        return VENTURE_ANALYST_SYSTEM_PROMPT
+
     async def execute(
         self,
         message: str,
         context: dict[str, Any] | None = None,
     ) -> AgentResponse:
-        """Execute venture analysis.
+        """Execute venture analysis with tool support.
 
         Args:
             message: Analysis request or question.
@@ -66,6 +82,19 @@ class VentureAnalystAgent(BaseAgent):
         Returns:
             AgentResponse with analysis, citations, and suggested KG updates.
         """
+        # Use tool-enabled execution with calculator for unit economics
+        return await self.execute_with_tools(
+            message=message,
+            context=context,
+            max_iterations=8  # Venture analysis may need more iterations
+        )
+
+    async def execute_legacy(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+    ) -> AgentResponse:
+        """Legacy execution method without tools."""
         # Get comprehensive context
         venture_snapshot = await self.get_venture_snapshot()
         retrieval_context = await self.get_context(message, max_chunks=15)

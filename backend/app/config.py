@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
 
+    # Tool APIs
+    brave_api_key: str = ""
+    serper_api_key: str = ""  # Optional fallback for web search
+
+    # Tool Configuration
+    max_tool_iterations: int = 5
+    tool_timeout_seconds: int = 30
+    enable_tool_use: bool = True
+
     # Storage
     s3_endpoint: str | None = None
     s3_access_key: str = ""

@@ -3,7 +3,13 @@
 from app.models.artifact import Artifact, ArtifactStatus, ArtifactType, ArtifactVersion
 from app.models.base import Base, TimestampMixin, UUIDMixin
 from app.models.chat import ChatMessage, ChatSession, MessageRole
-from app.models.document import Document, DocumentChunk, DocumentStatus, DocumentType
+from app.models.document import (
+    Document,
+    DocumentChunk,
+    DocumentStatus,
+    DocumentType,
+    VisionProcessingStatus,
+)
 from app.models.kg_entity import (
     KGEntity,
     KGEntityStatus,
@@ -15,6 +21,11 @@ from app.models.kg_entity import (
 )
 from app.models.user import User
 from app.models.venture import Venture, VentureStage
+from app.models.visual_content import (
+    VisualContent,
+    VisualContentType,
+    VisionProcessingStatus as VisualVisionProcessingStatus,
+)
 from app.models.workspace import Workspace, WorkspaceMembership, WorkspaceRole
 
 __all__ = [
@@ -38,6 +49,10 @@ __all__ = [
     "DocumentChunk",
     "DocumentType",
     "DocumentStatus",
+    "VisionProcessingStatus",
+    "VisualContent",
+    "VisualContentType",
+    "VisualVisionProcessingStatus",
     "ChatSession",
     "ChatMessage",
     "MessageRole",

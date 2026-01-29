@@ -2,7 +2,7 @@ from enum import Enum as PyEnum
 from typing import TYPE_CHECKING, Any
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Enum, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Enum, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
@@ -11,6 +11,7 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.workspace import Workspace
+    from app.models.visual_content import VisualContent
 
 
 # Use JSONB on PostgreSQL, generic JSON on others (SQLite)
@@ -30,6 +31,17 @@ class DocumentStatus(str, PyEnum):
     PROCESSING = "processing"
     INDEXED = "indexed"
     FAILED = "failed"
+
+
+class VisionProcessingStatus(str, PyEnum):
+    """Status of vision processing for documents with visual content."""
+    NOT_STARTED = "not_started"
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    PARTIAL = "partial"  # Some pages succeeded, some failed
+    FAILED = "failed"
+    SKIPPED = "skipped"  # Vision disabled or not applicable
 
 
 class Document(Base, UUIDMixin, TimestampMixin):
@@ -53,8 +65,24 @@ class Document(Base, UUIDMixin, TimestampMixin):
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Vision processing fields
+    has_visual_content: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+    page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    vision_processing_status: Mapped[VisionProcessingStatus] = mapped_column(
+        Enum(VisionProcessingStatus, native_enum=False),
+        default=VisionProcessingStatus.NOT_STARTED
+    )
+    vision_metadata: Mapped[dict[str, Any] | None] = mapped_column(
+        JSON_TYPE, nullable=True
+    )
+
     workspace: Mapped["Workspace"] = relationship(back_populates="documents")
     chunks: Mapped[list["DocumentChunk"]] = relationship(
+        back_populates="document", cascade="all, delete-orphan"
+    )
+    visual_content: Mapped[list["VisualContent"]] = relationship(
         back_populates="document", cascade="all, delete-orphan"
     )
 

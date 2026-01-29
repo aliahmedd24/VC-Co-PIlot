@@ -14,6 +14,7 @@ from app.core.agents.llm_client import LLMClient, get_llm_client
 from app.core.agents.market_research_agent import MarketResearchAgent
 from app.core.agents.pre_mortem_critic_agent import PreMortemCriticAgent
 from app.core.agents.qa_simulator_agent import QASimulatorAgent
+from app.core.agents.research_agent import ResearchAgent
 from app.core.agents.response import AgentResponse
 from app.core.agents.storyteller_agent import StorytellerAgent
 from app.core.agents.valuation_strategist_agent import ValuationStrategistAgent
@@ -38,6 +39,7 @@ INTENT_CLASSIFICATION_PROMPT = """Classify the user's message into one of these 
 12. ICP - Customer profiling, personas, segmentation
 13. RISK - Risks, failure modes, pre-mortem, threats
 14. COMPETITOR - Competitor analysis, competitive landscape, positioning
+15. DEEP_RESEARCH - Complex multi-source research requiring web search and synthesis
 
 Respond with ONLY the category name.
 
@@ -62,6 +64,7 @@ AGENT_REGISTRY: dict[str, type[BaseAgent]] = {
     "icp_profiler": ICPProfilerAgent,
     "pre_mortem_critic": PreMortemCriticAgent,
     "competitive_intel": CompetitiveIntelAgent,
+    "research_agent": ResearchAgent,
 }
 
 # Intent to agent mapping
@@ -80,6 +83,7 @@ INTENT_TO_AGENT: dict[str, str] = {
     "ICP": "icp_profiler",
     "RISK": "pre_mortem_critic",
     "COMPETITOR": "competitive_intel",
+    "DEEP_RESEARCH": "research_agent",
 }
 
 

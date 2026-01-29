@@ -45,11 +45,49 @@ class CompetitiveIntelAgent(BaseAgent):
         super().__init__(brain)
         self.llm = llm or get_llm_client("claude")
 
+    def get_default_tools(self) -> list[str]:
+        """Get tools for competitive intelligence.
+
+        Returns:
+            List of tool names for competitive analysis
+        """
+        return ["web_search", "query_knowledge_graph", "extract_entities"]
+
+    def _get_system_prompt(self) -> str:
+        """Get the competitive intelligence system prompt.
+
+        Returns:
+            System prompt for competitive intelligence
+        """
+        return COMPETITIVE_INTEL_SYSTEM_PROMPT
+
     async def execute(
         self,
         message: str,
         context: dict[str, Any] | None = None,
     ) -> AgentResponse:
+        """Execute competitive intelligence with tool support.
+
+        Args:
+            message: Research request or question.
+            context: Optional additional context.
+
+        Returns:
+            AgentResponse with competitive analysis, citations, and suggested KG updates.
+        """
+        # Use tool-enabled execution for enhanced competitor research
+        return await self.execute_with_tools(
+            message=message,
+            context=context,
+            max_iterations=7
+        )
+
+    async def execute_legacy(
+        self,
+        message: str,
+        context: dict[str, Any] | None = None,
+    ) -> AgentResponse:
+        """Legacy execution method without tools."""
         venture_snapshot = await self.get_venture_snapshot()
         retrieval_context = await self.get_context(message, max_chunks=15)
 
