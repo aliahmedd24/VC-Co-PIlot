@@ -1,5 +1,6 @@
 """RAG Retriever with freshness-weighted scoring."""
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any, Protocol
 from uuid import uuid4
@@ -9,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document, DocumentChunk
 from app.models.venture import Venture
+from app.models.visual_content import VisualContent
+from app.models.visual_content import VisionProcessingStatus as VisualStatus
 
 
 class EmbeddingService(Protocol):
@@ -28,6 +31,23 @@ class ChunkWithScore:
     similarity: float
     freshness_weight: float
     final_score: float
+    metadata: dict | None = None
+
+
+@dataclass
+class VisualContentWithScore:
+    """Visual content with relevance scores for multi-modal RAG."""
+
+    id: str
+    document_id: str
+    page_number: int | None
+    content_type: str
+    vision_analysis: dict | None
+    extracted_text: str | None
+    similarity: float
+    freshness_weight: float
+    final_score: float
+    thumbnail_key: str | None = None
     metadata: dict | None = None
 
 
@@ -126,6 +146,116 @@ class RAGRetriever:
 
         scored.sort(key=lambda x: x.final_score, reverse=True)
         return scored[:limit]
+
+    async def search_visual(
+        self,
+        query: str,
+        limit: int = 5,
+        content_types: list[str] | None = None,
+    ) -> list[VisualContentWithScore]:
+        """Search visual content embeddings.
+
+        Searches VisualContent records that have been processed and have embeddings.
+        Returns visual content sorted by freshness-weighted similarity score.
+
+        Args:
+            query: Search query text
+            limit: Maximum number of results to return
+            content_types: Optional filter for content types (slide, chart, etc.)
+
+        Returns:
+            List of VisualContentWithScore objects
+        """
+        if not self.embedder:
+            return []
+
+        query_embedding = await self.embedder.embed(query)
+        embedding_str = f"[{','.join(map(str, query_embedding))}]"
+
+        # Build content type filter if provided
+        content_type_filter = ""
+        if content_types:
+            types_str = ",".join(f"'{t}'" for t in content_types)
+            content_type_filter = f"AND vc.content_type IN ({types_str})"
+
+        sql = text(f"""
+            SELECT
+                vc.id,
+                vc.document_id,
+                vc.page_number,
+                vc.content_type,
+                vc.vision_analysis,
+                vc.extracted_text,
+                vc.thumbnail_key,
+                vc.metadata,
+                1 - (vc.embedding <=> :embedding::vector) AS similarity,
+                EXP(-0.693 * EXTRACT(EPOCH FROM (NOW() - d.created_at)) / 86400 / :half_life) AS freshness_weight,
+                (1 - (vc.embedding <=> :embedding::vector)) *
+                EXP(-0.693 * EXTRACT(EPOCH FROM (NOW() - d.created_at)) / 86400 / :half_life) AS final_score
+            FROM visual_content vc
+            JOIN documents d ON vc.document_id = d.id
+            WHERE
+                vc.venture_id = :venture_id
+                AND vc.embedding IS NOT NULL
+                AND vc.processing_status = 'completed'
+                {content_type_filter}
+            ORDER BY final_score DESC
+            LIMIT :limit
+        """)
+
+        result = await self.session.execute(
+            sql,
+            {
+                "embedding": embedding_str,
+                "venture_id": self.venture_id,
+                "half_life": self.FRESHNESS_HALF_LIFE_DAYS,
+                "limit": limit,
+            },
+        )
+
+        return [
+            VisualContentWithScore(
+                id=row.id,
+                document_id=row.document_id,
+                page_number=row.page_number,
+                content_type=row.content_type,
+                vision_analysis=row.vision_analysis,
+                extracted_text=row.extracted_text,
+                similarity=row.similarity,
+                freshness_weight=row.freshness_weight,
+                final_score=row.final_score,
+                thumbnail_key=row.thumbnail_key,
+                metadata=row.metadata,
+            )
+            for row in result.fetchall()
+        ]
+
+    async def search_all(
+        self,
+        query: str,
+        text_limit: int = 10,
+        visual_limit: int = 5,
+        content_types: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Search both text chunks and visual content in parallel.
+
+        Args:
+            query: Search query text
+            text_limit: Maximum number of text chunk results
+            visual_limit: Maximum number of visual content results
+            content_types: Optional filter for visual content types
+
+        Returns:
+            Dict with 'chunks' and 'visual_content' keys
+        """
+        text_results, visual_results = await asyncio.gather(
+            self.search(query, limit=text_limit),
+            self.search_visual(query, limit=visual_limit, content_types=content_types),
+        )
+        return {
+            "chunks": text_results,
+            "visual_content": visual_results,
+        }
 
     async def index_document(self, document_id: str, content: str) -> int:
         """Index a document by chunking and embedding."""

@@ -49,6 +49,27 @@ class Settings(BaseSettings):
     tool_timeout_seconds: int = 30
     enable_tool_use: bool = True
 
+    # Vision Settings
+    vision_enabled: bool = False  # Feature flag for vision capabilities
+    vision_model: str = "claude-sonnet-4-20250514"  # Model with vision support
+    vision_max_images_per_document: int = 50  # Max pages to process per document
+    vision_processing_mode: str = "parallel"  # 'parallel' or 'sequential'
+
+    # Vision Rate Limiting & Cost Control
+    vision_max_requests_per_minute: int = 50  # API rate limit
+    vision_daily_cost_limit: float = 100.0  # USD daily cost limit
+    vision_cost_per_image: float = 0.005  # Estimated cost per image
+
+    # Vision Image Processing
+    vision_image_max_dimension: int = 1568  # Claude's max dimension
+    vision_image_format: str = "PNG"  # Output format
+    vision_thumbnail_size: tuple[int, int] = (300, 300)  # Thumbnail dimensions
+    vision_target_file_size_kb: int = 500  # Target file size after optimization
+
+    # Vision Caching
+    vision_cache_enabled: bool = True  # Enable result caching
+    vision_cache_ttl_days: int = 7  # Cache time-to-live
+
     # Storage
     s3_endpoint: str | None = None
     s3_access_key: str = ""

@@ -72,17 +72,26 @@ class BaseAgent(ABC):
         self,
         query: str,
         max_chunks: int = 10,
+        max_visual: int = 5,
+        include_visual: bool = True,
     ) -> dict[str, Any]:
         """Retrieve context from the brain for the given query.
 
         Args:
             query: Search query string.
             max_chunks: Maximum document chunks to retrieve.
+            max_visual: Maximum visual content items to retrieve.
+            include_visual: Whether to include visual content search.
 
         Returns:
-            Dict with 'chunks', 'entities', and 'citations'.
+            Dict with 'chunks', 'visual_content', 'entities', 'citations', and 'visual_citations'.
         """
-        return await self.brain.retrieve(query, max_chunks=max_chunks)
+        return await self.brain.retrieve(
+            query,
+            max_chunks=max_chunks,
+            max_visual=max_visual,
+            include_visual=include_visual,
+        )
 
     async def get_venture_snapshot(self) -> dict[str, Any]:
         """Get the current venture state snapshot.
@@ -111,6 +120,13 @@ class BaseAgent(ABC):
                 content = getattr(chunk, "content", str(chunk))[:500]
                 parts.append(f"[{i}] {content}\n")
 
+        # Add visual content
+        visual_citations = context.get("visual_citations", [])
+        if visual_citations:
+            visual_context = self.format_visual_context(visual_citations)
+            if visual_context:
+                parts.append(f"\n{visual_context}\n")
+
         # Add KG entities
         entities = context.get("entities", [])
         if entities:
@@ -121,6 +137,30 @@ class BaseAgent(ABC):
                 parts.append(f"- {entity_type}: {entity_data}\n")
 
         return "".join(parts) if parts else "No relevant context found."
+
+    def format_visual_context(self, visual_citations: list[dict[str, Any]]) -> str:
+        """Format visual content for inclusion in LLM prompt.
+
+        Args:
+            visual_citations: Visual citations from brain.retrieve().
+
+        Returns:
+            Formatted string with visual content context.
+        """
+        if not visual_citations:
+            return ""
+
+        sections = ["## Visual Content Context"]
+        for v in visual_citations[:5]:  # Limit to top 5
+            page = v.get("page_number", "?")
+            content_type = v.get("content_type", "unknown")
+            snippet = v.get("snippet", "")[:300]
+            score = v.get("score", 0)
+            sections.append(f"### Page {page} ({content_type})")
+            sections.append(snippet)
+            sections.append(f"[Relevance: {score:.2f}]")
+
+        return "\n\n".join(sections)
 
     def get_default_tools(self) -> list[str]:
         """Get the list of default tools for this agent.
@@ -403,11 +443,29 @@ Be thorough, accurate, and cite your sources."""
             List of Citation objects
         """
         citations = []
+
+        # Add text chunk citations
         for cite in context.get("citations", []):
             citations.append(Citation(
                 chunk_id=cite.get("chunk_id"),
                 document_id=cite.get("document_id"),
                 snippet=cite.get("snippet", ""),
-                relevance=cite.get("relevance", 0.5)
+                relevance=cite.get("score", 0.5)
             ))
+
+        # Add visual content citations
+        for visual in context.get("visual_citations", []):
+            citations.append(Citation(
+                chunk_id=visual.get("visual_id"),
+                document_id=visual.get("document_id"),
+                snippet=visual.get("snippet", ""),
+                relevance=visual.get("score", 0.5),
+                metadata={
+                    "type": "visual",
+                    "page_number": visual.get("page_number"),
+                    "content_type": visual.get("content_type"),
+                    "thumbnail_key": visual.get("thumbnail_key"),
+                }
+            ))
+
         return citations

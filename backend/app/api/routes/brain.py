@@ -22,6 +22,7 @@ from app.schemas.brain import (
     ProposeUpdatesResponse,
     VentureInfo,
     VentureProfileResponse,
+    VisualCitationResult,
 )
 
 router = APIRouter()
@@ -217,7 +218,7 @@ async def search_brain(
     db: DbSession,
     current_user: CurrentUser,
 ):
-    """Search the brain (RAG + KG combined)."""
+    """Search the brain (RAG + KG + Visual content combined)."""
     venture = await get_venture_for_workspace(workspace_id, db, current_user)
     brain = StartupBrain(venture.id, db)
 
@@ -229,6 +230,8 @@ async def search_brain(
     result = await brain.retrieve(
         query=request.query,
         max_chunks=request.max_chunks,
+        max_visual=request.max_visual,
+        include_visual=request.include_visual,
         entity_types=entity_types,
         include_relations=request.include_relations,
     )
@@ -243,6 +246,18 @@ async def search_brain(
                 score=c["score"],
             )
             for c in result.get("citations", [])
+        ],
+        visual_citations=[
+            VisualCitationResult(
+                visual_id=v["visual_id"],
+                document_id=v["document_id"],
+                page_number=v.get("page_number"),
+                content_type=v["content_type"],
+                snippet=v["snippet"],
+                score=v["score"],
+                thumbnail_key=v.get("thumbnail_key"),
+            )
+            for v in result.get("visual_citations", [])
         ],
     )
 

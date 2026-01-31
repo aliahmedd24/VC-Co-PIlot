@@ -105,6 +105,8 @@ class BrainSearchRequest(BaseModel):
 
     query: str = Field(..., min_length=1, max_length=1000)
     max_chunks: int = Field(default=10, ge=1, le=50)
+    max_visual: int = Field(default=5, ge=0, le=20)
+    include_visual: bool = True
     entity_types: list[KGEntityTypeEnum] | None = None
     include_relations: bool = True
 
@@ -118,11 +120,24 @@ class ChunkResult(BaseModel):
     score: float
 
 
+class VisualCitationResult(BaseModel):
+    """A visual content item from multi-modal RAG search."""
+
+    visual_id: str
+    document_id: str
+    page_number: int | None = None
+    content_type: str
+    snippet: str
+    score: float
+    thumbnail_key: str | None = None
+
+
 class BrainSearchResponse(BaseModel):
     """Schema for brain search responses."""
 
     entities: list[EntityResponse] = Field(default_factory=list)
     citations: list[ChunkResult] = Field(default_factory=list)
+    visual_citations: list[VisualCitationResult] = Field(default_factory=list)
 
 
 # --- Proposal Schemas ---

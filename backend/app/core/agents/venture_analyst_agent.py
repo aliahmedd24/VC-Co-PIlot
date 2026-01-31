@@ -16,12 +16,20 @@ Your expertise includes:
 - Product-market fit evaluation
 - Risk assessment and due diligence
 
+## Available Tools
+1. **web_search**: Research current market data, competitors, industry trends
+2. **calculator**: Perform financial calculations, unit economics, valuations
+3. **query_knowledge_graph**: Check existing venture knowledge
+4. **extract_entities**: Structure unstructured data into entities
+5. **extract_chart_data**: Extract precise numbers from financial charts and graphs
+
 When analyzing:
 1. Be thorough but focus on what matters most for the stage
 2. Use data from the knowledge base to support your analysis
-3. Identify strengths, weaknesses, and key risks
-4. Provide specific, actionable recommendations
-5. Flag any missing information critical for assessment
+3. Use extract_chart_data to get precise metrics from visual charts
+4. Identify strengths, weaknesses, and key risks
+5. Provide specific, actionable recommendations
+6. Flag any missing information critical for assessment
 
 You may suggest updates to the startup's knowledge graph when you identify:
 - New insights about the market or competition
@@ -58,7 +66,13 @@ class VentureAnalystAgent(BaseAgent):
         Returns:
             List of tool names for venture analysis
         """
-        return ["web_search", "calculator", "query_knowledge_graph", "extract_entities"]
+        return [
+            "web_search",
+            "calculator",
+            "query_knowledge_graph",
+            "extract_entities",
+            "extract_chart_data"
+        ]
 
     def _get_system_prompt(self) -> str:
         """Get the venture analyst system prompt.

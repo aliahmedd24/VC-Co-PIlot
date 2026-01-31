@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime
 from uuid import uuid4
 
-from celery import shared_task
+from celery import chain, shared_task
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -203,6 +203,59 @@ def process_document(self, document_id: str) -> dict:
             loop.close()
 
         return {"status": "success", "document_id": document_id}
+
+    except Exception as e:
+        # Retry with exponential backoff
+        raise self.retry(exc=e, countdown=2**self.request.retries) from e
+
+
+@shared_task(bind=True, max_retries=3)
+def process_document_with_vision(
+    self,
+    document_id: str,
+    enable_vision: bool = True,
+    vision_analysis_type: str = "general",
+) -> dict:
+    """Celery task to process a document with optional vision analysis.
+
+    This task chains text processing and vision processing:
+    1. Extract text and create embeddings (standard processing)
+    2. If enable_vision=True, trigger vision processing in parallel
+
+    Args:
+        document_id: ID of the document to process
+        enable_vision: Whether to enable vision processing
+        vision_analysis_type: Type of vision analysis ('pitch_deck', 'chart', 'ocr', 'general')
+
+    Returns:
+        Result dict with status
+    """
+    try:
+        # Run text processing first
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_process_document_async(document_id))
+        finally:
+            loop.close()
+
+        # If vision enabled and document is PDF, trigger vision processing
+        if enable_vision:
+            # Import here to avoid circular dependency
+            from app.workers.vision_tasks import process_document_vision
+
+            # Trigger vision processing asynchronously (don't wait for it)
+            process_document_vision.apply_async(
+                args=[document_id],
+                kwargs={"analysis_type": vision_analysis_type},
+                countdown=5,  # Wait 5 seconds after text processing
+            )
+
+        return {
+            "status": "success",
+            "document_id": document_id,
+            "vision_enabled": enable_vision,
+        }
 
     except Exception as e:
         # Retry with exponential backoff

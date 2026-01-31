@@ -20,6 +20,7 @@ from app.core.agents.storyteller_agent import StorytellerAgent
 from app.core.agents.valuation_strategist_agent import ValuationStrategistAgent
 from app.core.agents.venture_analyst_agent import VentureAnalystAgent
 from app.core.agents.venture_architect_agent import VentureArchitectAgent
+from app.core.agents.vision_analyst_agent import VisionAnalystAgent
 from app.core.brain.startup_brain import StartupBrain
 
 # Intent classification prompt
@@ -40,6 +41,7 @@ INTENT_CLASSIFICATION_PROMPT = """Classify the user's message into one of these 
 13. RISK - Risks, failure modes, pre-mortem, threats
 14. COMPETITOR - Competitor analysis, competitive landscape, positioning
 15. DEEP_RESEARCH - Complex multi-source research requiring web search and synthesis
+16. VISUAL_ANALYSIS - Analyzing slides, charts, diagrams, or visual content from documents
 
 Respond with ONLY the category name.
 
@@ -65,6 +67,7 @@ AGENT_REGISTRY: dict[str, type[BaseAgent]] = {
     "pre_mortem_critic": PreMortemCriticAgent,
     "competitive_intel": CompetitiveIntelAgent,
     "research_agent": ResearchAgent,
+    "vision_analyst": VisionAnalystAgent,
 }
 
 # Intent to agent mapping
@@ -84,6 +87,7 @@ INTENT_TO_AGENT: dict[str, str] = {
     "RISK": "pre_mortem_critic",
     "COMPETITOR": "competitive_intel",
     "DEEP_RESEARCH": "research_agent",
+    "VISUAL_ANALYSIS": "vision_analyst",
 }
 
 

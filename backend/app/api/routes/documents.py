@@ -8,8 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
+from app.config import settings
 from app.dependencies import get_db
-from app.models.document import Document, DocumentChunk, DocumentStatus, DocumentType
+from app.models.document import Document, DocumentChunk, DocumentStatus, DocumentType, VisionProcessingStatus
 from app.models.user import User
 from app.models.workspace import Workspace
 from app.schemas.documents import (
@@ -28,6 +29,14 @@ router = APIRouter(prefix="/documents", tags=["documents"])
 
 # Maximum file size: 50MB
 MAX_FILE_SIZE = 50 * 1024 * 1024
+
+# Supported image MIME types for direct upload with vision
+SUPPORTED_IMAGE_TYPES = [
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+]
 
 
 # --- Helper Functions ---
@@ -102,6 +111,9 @@ async def upload_document(
     workspace_id: str,
     file: UploadFile = File(...),
     document_type: DocumentTypeEnum = Form(DocumentTypeEnum.OTHER),
+    enable_vision: bool = Form(False),
+    vision_analysis_type: str = Form("general"),
+    max_vision_pages: int | None = Form(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentUploadResponse:
@@ -109,16 +121,40 @@ async def upload_document(
 
     The document will be stored in S3/MinIO and queued for background
     processing (text extraction, chunking, and embedding).
+
+    Args:
+        enable_vision: Enable vision processing for this document
+        vision_analysis_type: Type of vision analysis (general, pitch_deck, chart, ocr)
+        max_vision_pages: Maximum number of pages to process with vision
     """
     # Verify workspace access
     await get_workspace_or_404(workspace_id, user, db)
 
     # Validate file type
     content_type = file.content_type or "application/octet-stream"
-    if not is_supported_mime_type(content_type):
+    is_document = is_supported_mime_type(content_type)
+    is_image = content_type in SUPPORTED_IMAGE_TYPES
+
+    if not is_document and not is_image:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {content_type}. Supported: {SUPPORTED_MIME_TYPES}",
+            detail=f"Unsupported file type: {content_type}. "
+            f"Supported documents: {SUPPORTED_MIME_TYPES}. "
+            f"Supported images: {SUPPORTED_IMAGE_TYPES}",
+        )
+
+    # Images require vision to be enabled
+    if is_image and not enable_vision:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Image uploads require enable_vision=true",
+        )
+
+    # Check if vision is enabled in config when requested
+    if enable_vision and not settings.vision_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vision processing is not enabled on this server",
         )
 
     # Read file content
@@ -157,6 +193,12 @@ async def upload_document(
         size=file_size,
         storage_key=storage_key,
         status=DocumentStatus.PENDING,
+        # Set vision status based on request
+        vision_processing_status=(
+            VisionProcessingStatus.PENDING if enable_vision
+            else VisionProcessingStatus.NOT_STARTED
+        ),
+        has_visual_content=is_image,
     )
     db.add(document)
     await db.commit()
@@ -164,16 +206,31 @@ async def upload_document(
 
     # Queue background processing task
     try:
-        from app.workers.document_tasks import process_document
+        if enable_vision:
+            from app.workers.document_tasks import process_document_with_vision
 
-        process_document.delay(document.id)
+            process_document_with_vision.delay(
+                document.id,
+                enable_vision=True,
+                vision_analysis_type=vision_analysis_type,
+            )
+        else:
+            from app.workers.document_tasks import process_document
+
+            process_document.delay(document.id)
     except Exception:
         # If Celery not available, update status
         pass
 
+    message = "Document uploaded successfully. "
+    if enable_vision:
+        message += "Vision processing started."
+    else:
+        message += "Text processing started."
+
     return DocumentUploadResponse(
         document=format_document_response(document),
-        message="Document uploaded successfully. Processing started.",
+        message=message,
     )
 
 

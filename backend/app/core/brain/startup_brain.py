@@ -8,7 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.brain.events.event_store import EventStore
 from app.core.brain.kg.knowledge_graph import KnowledgeGraph
-from app.core.brain.rag.retriever import EmbeddingService, RAGRetriever
+from app.core.brain.rag.retriever import (
+    EmbeddingService,
+    RAGRetriever,
+    VisualContentWithScore,
+)
 from app.models.kg_entity import KGEntity, KGEntityType
 from app.models.venture import Venture
 
@@ -36,25 +40,36 @@ class StartupBrain:
         self,
         query: str,
         max_chunks: int = 10,
+        max_visual: int = 5,
+        include_visual: bool = True,
         entity_types: list[KGEntityType] | None = None,
         include_relations: bool = True,
     ) -> dict[str, Any]:
-        """Unified retrieval combining RAG and KG.
+        """Unified retrieval combining RAG, visual content, and KG.
 
         Args:
             query: Search query string.
             max_chunks: Maximum number of document chunks to return.
+            max_visual: Maximum number of visual content items to return.
+            include_visual: Whether to include visual content search.
             entity_types: Optional filter for KG entity types.
             include_relations: Whether to include entity relations.
 
         Returns:
-            Dict with 'chunks', 'entities', and 'citations'.
+            Dict with 'chunks', 'visual_content', 'entities', 'citations', and 'visual_citations'.
         """
-        # Run RAG and KG searches in parallel
-        chunks_task = self.rag.search(query, limit=max_chunks)
-        entities_task = self.kg.search_entities(query, types=entity_types)
+        # Run RAG, visual, and KG searches in parallel
+        tasks = [
+            self.rag.search(query, limit=max_chunks),
+            self.kg.search_entities(query, types=entity_types),
+        ]
 
-        chunks, entities = await asyncio.gather(chunks_task, entities_task)
+        if include_visual:
+            tasks.insert(1, self.rag.search_visual(query, limit=max_visual))
+            chunks, visual_content, entities = await asyncio.gather(*tasks)
+        else:
+            chunks, entities = await asyncio.gather(*tasks)
+            visual_content = []
 
         # Build citations from chunks
         citations = [
@@ -66,6 +81,9 @@ class StartupBrain:
             }
             for c in chunks
         ]
+
+        # Build visual citations
+        visual_citations = self._format_visual_citations(visual_content)
 
         # Optionally load relations for entities
         if include_relations and entities:
@@ -81,9 +99,58 @@ class StartupBrain:
 
         return {
             "chunks": chunks,
+            "visual_content": visual_content,
             "entities": entities,
             "citations": citations,
+            "visual_citations": visual_citations,
         }
+
+    def _format_visual_citations(
+        self, visual_results: list[VisualContentWithScore]
+    ) -> list[dict[str, Any]]:
+        """Format visual content results as citations.
+
+        Args:
+            visual_results: List of VisualContentWithScore objects.
+
+        Returns:
+            List of citation dicts with visual content info.
+        """
+        citations = []
+        for v in visual_results:
+            # Extract snippet from vision analysis or extracted text
+            snippet = self._extract_visual_snippet(v)
+            citations.append({
+                "visual_id": v.id,
+                "document_id": v.document_id,
+                "page_number": v.page_number,
+                "content_type": v.content_type,
+                "snippet": snippet,
+                "score": v.final_score,
+                "thumbnail_key": v.thumbnail_key,
+            })
+        return citations
+
+    def _extract_visual_snippet(self, visual: VisualContentWithScore) -> str:
+        """Extract a text snippet from visual content for display.
+
+        Args:
+            visual: VisualContentWithScore object.
+
+        Returns:
+            Truncated text snippet.
+        """
+        # Prefer extracted text if available
+        if visual.extracted_text:
+            return visual.extracted_text[:200]
+
+        # Fall back to vision analysis content
+        if visual.vision_analysis:
+            content = visual.vision_analysis.get("content", "")
+            if content:
+                return content[:200]
+
+        return f"[{visual.content_type} on page {visual.page_number}]"
 
     async def get_snapshot(
         self, entity_types: list[KGEntityType] | None = None
