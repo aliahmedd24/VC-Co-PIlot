@@ -1,0 +1,9 @@
+# {{ title }}
+
+{{ body }}
+
+{% for section in sections %}
+## {{ section.get('heading', 'Section') }}
+{{ section.get('text', '') }}
+
+{% endfor %}

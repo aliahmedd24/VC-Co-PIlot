@@ -1,0 +1,29 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="section highlight">
+<h2>Summary</h2>
+<p>{{ summary }}</p>
+</div>
+
+<div class="section">
+<h2>Key Findings</h2>
+<ul>{% for f in key_findings %}<li>{{ f }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Methodology</h2>
+<p>{{ methodology }}</p>
+</div>
+
+<div class="section">
+<h2>Sources</h2>
+<ul>{% for s in sources %}<li>{{ s }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Recommendations</h2>
+<ul>{% for r in recommendations %}<li>{{ r }}</li>{% endfor %}</ul>
+</div>
+{% endblock %}

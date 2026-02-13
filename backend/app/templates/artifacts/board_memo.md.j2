@@ -1,0 +1,25 @@
+# {{ title }}
+
+## Subject
+{{ subject }}
+
+## Executive Summary
+{{ executive_summary }}
+
+## Key Updates
+{% for update in key_updates %}
+- {{ update }}
+{% endfor %}
+
+## Financials Summary
+{{ financials_summary }}
+
+## Decisions Needed
+{% for decision in decisions_needed %}
+- {{ decision }}
+{% endfor %}
+
+## Appendix
+{% for item in appendix %}
+- {{ item }}
+{% endfor %}

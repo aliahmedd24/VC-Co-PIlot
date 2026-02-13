@@ -1,0 +1,124 @@
+dimensions:
+  business:
+    weight: 0.25
+    label: "Business"
+    entity_types:
+      - venture
+      - product
+      - icp
+    checks:
+      - field: "problem"
+        source: "venture_fields"
+        label: "Problem statement defined"
+        points: 20
+      - field: "solution"
+        source: "venture_fields"
+        label: "Solution described"
+        points: 20
+      - field: "icp"
+        source: "entity_type"
+        label: "ICP (Ideal Customer Profile) identified"
+        points: 25
+      - field: "product"
+        source: "entity_type"
+        label: "Product details documented"
+        points: 20
+      - field: "one_liner"
+        source: "venture_fields"
+        label: "One-liner pitch"
+        points: 15
+
+  financial:
+    weight: 0.20
+    label: "Financial"
+    entity_types:
+      - metric
+      - funding_assumption
+    checks:
+      - field: "metric"
+        source: "entity_type"
+        label: "Key metrics tracked"
+        points: 35
+      - field: "funding_assumption"
+        source: "entity_type"
+        label: "Funding assumptions documented"
+        points: 35
+      - field: "revenue_data"
+        source: "metric_has_name"
+        match_name: "revenue"
+        label: "Revenue data available"
+        points: 30
+
+  market:
+    weight: 0.20
+    label: "Market"
+    entity_types:
+      - market
+      - competitor
+    checks:
+      - field: "market"
+        source: "entity_type"
+        label: "TAM/SAM market analysis"
+        points: 40
+      - field: "competitor"
+        source: "entity_type"
+        label: "Competitive landscape mapped"
+        points: 35
+      - field: "competitor_count"
+        source: "entity_count_min"
+        entity_type: "competitor"
+        min_count: 2
+        label: "Multiple competitors analyzed"
+        points: 25
+
+  team:
+    weight: 0.15
+    label: "Team"
+    entity_types:
+      - team_member
+    checks:
+      - field: "team_member"
+        source: "entity_type"
+        label: "Team members documented"
+        points: 50
+      - field: "team_count"
+        source: "entity_count_min"
+        entity_type: "team_member"
+        min_count: 2
+        label: "Multiple team members listed"
+        points: 50
+
+  materials:
+    weight: 0.20
+    label: "Materials"
+    entity_types: []
+    checks:
+      - field: "venture_name"
+        source: "venture_fields"
+        label: "Venture name set"
+        points: 20
+      - field: "stage"
+        source: "venture_fields"
+        label: "Stage defined"
+        points: 20
+      - field: "risk"
+        source: "entity_type"
+        label: "Risks identified"
+        points: 30
+      - field: "entity_richness"
+        source: "total_entity_min"
+        min_count: 5
+        label: "5+ knowledge graph entities"
+        points: 30
+
+grades:
+  - min_score: 90
+    grade: "A"
+  - min_score: 75
+    grade: "B"
+  - min_score: 60
+    grade: "C"
+  - min_score: 40
+    grade: "D"
+  - min_score: 0
+    grade: "F"

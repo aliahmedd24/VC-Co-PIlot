@@ -1,0 +1,14 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% for slide in slides %}
+<div class="section">
+<h2>Slide {{ loop.index }}: {{ slide.title }}</h2>
+<h3>Key Points</h3>
+<ul>{% for point in slide.key_points %}<li>{{ point }}</li>{% endfor %}</ul>
+{% if slide.visual_suggestion %}<p><span class="label">Visual:</span> {{ slide.visual_suggestion }}</p>{% endif %}
+{% if slide.speaker_notes %}<p><span class="label">Speaker Notes:</span> {{ slide.speaker_notes }}</p>{% endif %}
+</div>
+{% endfor %}
+{% endblock %}

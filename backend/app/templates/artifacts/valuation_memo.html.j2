@@ -1,0 +1,41 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="section">
+<h2>Methodology</h2>
+<p>{{ methodology }}</p>
+</div>
+
+<div class="section highlight">
+<h2>Valuation Range</h2>
+{% if range_low is not none and range_high is not none %}
+<table>
+<tr><th>Estimate</th><th>Value</th></tr>
+<tr><td>Low</td><td>${{ "{:,.0f}".format(range_low) }}</td></tr>
+<tr><td>High</td><td>${{ "{:,.0f}".format(range_high) }}</td></tr>
+{% if recommended is not none %}<tr><td><strong>Recommended</strong></td><td><strong>${{ "{:,.0f}".format(recommended) }}</strong></td></tr>{% endif %}
+</table>
+{% endif %}
+</div>
+
+<div class="section">
+<h2>Comparables</h2>
+{% if comparables %}
+<table>
+<tr><th>Company</th><th>Multiple</th></tr>
+{% for comp in comparables %}<tr><td>{{ comp.get('company', 'N/A') }}</td><td>{{ comp.get('multiple', 'N/A') }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+</div>
+
+<div class="section">
+<h2>Assumptions</h2>
+<ul>{% for a in assumptions %}<li>{{ a.get('description', a) }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Narrative</h2>
+<p>{{ narrative }}</p>
+</div>
+{% endblock %}

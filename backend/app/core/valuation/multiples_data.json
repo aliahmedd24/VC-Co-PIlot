@@ -1,0 +1,70 @@
+{
+  "industry_multiples": {
+    "saas": {
+      "pre_seed": {"low": 8, "mid": 12, "high": 20},
+      "seed": {"low": 10, "mid": 15, "high": 25},
+      "series_a": {"low": 12, "mid": 20, "high": 35},
+      "series_b": {"low": 10, "mid": 18, "high": 30},
+      "growth": {"low": 8, "mid": 15, "high": 25}
+    },
+    "fintech": {
+      "pre_seed": {"low": 6, "mid": 10, "high": 18},
+      "seed": {"low": 8, "mid": 14, "high": 22},
+      "series_a": {"low": 10, "mid": 18, "high": 30},
+      "series_b": {"low": 8, "mid": 15, "high": 25},
+      "growth": {"low": 6, "mid": 12, "high": 20}
+    },
+    "healthtech": {
+      "pre_seed": {"low": 5, "mid": 8, "high": 15},
+      "seed": {"low": 6, "mid": 10, "high": 18},
+      "series_a": {"low": 8, "mid": 14, "high": 24},
+      "series_b": {"low": 7, "mid": 12, "high": 20},
+      "growth": {"low": 5, "mid": 10, "high": 18}
+    },
+    "ecommerce": {
+      "pre_seed": {"low": 2, "mid": 4, "high": 8},
+      "seed": {"low": 3, "mid": 5, "high": 10},
+      "series_a": {"low": 4, "mid": 7, "high": 12},
+      "series_b": {"low": 3, "mid": 6, "high": 10},
+      "growth": {"low": 2, "mid": 5, "high": 8}
+    },
+    "marketplace": {
+      "pre_seed": {"low": 4, "mid": 8, "high": 15},
+      "seed": {"low": 6, "mid": 10, "high": 18},
+      "series_a": {"low": 8, "mid": 14, "high": 25},
+      "series_b": {"low": 6, "mid": 12, "high": 20},
+      "growth": {"low": 5, "mid": 10, "high": 18}
+    },
+    "edtech": {
+      "pre_seed": {"low": 4, "mid": 7, "high": 12},
+      "seed": {"low": 5, "mid": 9, "high": 15},
+      "series_a": {"low": 7, "mid": 12, "high": 20},
+      "series_b": {"low": 5, "mid": 10, "high": 16},
+      "growth": {"low": 4, "mid": 8, "high": 14}
+    },
+    "deeptech": {
+      "pre_seed": {"low": 10, "mid": 18, "high": 30},
+      "seed": {"low": 12, "mid": 22, "high": 40},
+      "series_a": {"low": 15, "mid": 28, "high": 50},
+      "series_b": {"low": 12, "mid": 22, "high": 40},
+      "growth": {"low": 10, "mid": 18, "high": 35}
+    },
+    "default": {
+      "pre_seed": {"low": 5, "mid": 8, "high": 15},
+      "seed": {"low": 6, "mid": 10, "high": 18},
+      "series_a": {"low": 8, "mid": 15, "high": 25},
+      "series_b": {"low": 6, "mid": 12, "high": 20},
+      "growth": {"low": 5, "mid": 10, "high": 18}
+    }
+  },
+  "growth_premium": {
+    "ranges": [
+      {"min_growth": 0.0, "max_growth": 0.2, "multiplier": 0.7},
+      {"min_growth": 0.2, "max_growth": 0.5, "multiplier": 0.9},
+      {"min_growth": 0.5, "max_growth": 1.0, "multiplier": 1.0},
+      {"min_growth": 1.0, "max_growth": 2.0, "multiplier": 1.3},
+      {"min_growth": 2.0, "max_growth": 5.0, "multiplier": 1.6},
+      {"min_growth": 5.0, "max_growth": 100.0, "multiplier": 2.0}
+    ]
+  }
+}

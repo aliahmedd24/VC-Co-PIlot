@@ -1,0 +1,20 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% if metrics %}
+<table>
+<tr><th>Metric</th><th>Current</th><th>Target</th><th>Unit</th><th>Trend</th><th>Category</th></tr>
+{% for m in metrics %}
+<tr>
+<td>{{ m.name }}</td>
+<td>{{ m.current_value if m.current_value is not none else '—' }}</td>
+<td>{{ m.target_value if m.target_value is not none else '—' }}</td>
+<td>{{ m.unit }}</td>
+<td>{{ m.trend }}</td>
+<td>{{ m.category }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
+{% endblock %}

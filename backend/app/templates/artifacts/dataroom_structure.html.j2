@@ -1,0 +1,16 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+{% for category in categories %}
+<div class="section">
+<h2>{{ category.name }} ({{ category.completion_pct | round(1) }}%)</h2>
+<table>
+<tr><th>Document</th><th>Status</th></tr>
+{% for doc in category.required_docs %}
+<tr><td>{{ doc }}</td><td>{% if doc in category.uploaded_docs %}Uploaded{% else %}Missing{% endif %}</td></tr>
+{% endfor %}
+</table>
+</div>
+{% endfor %}
+{% endblock %}

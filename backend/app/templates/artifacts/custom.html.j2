@@ -1,0 +1,15 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="section">
+<p>{{ body }}</p>
+</div>
+
+{% for section in sections %}
+<div class="section">
+<h2>{{ section.get('heading', 'Section') }}</h2>
+<p>{{ section.get('text', '') }}</p>
+</div>
+{% endfor %}
+{% endblock %}

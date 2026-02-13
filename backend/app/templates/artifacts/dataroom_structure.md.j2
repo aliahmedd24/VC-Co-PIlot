@@ -1,0 +1,11 @@
+# {{ title }}
+
+{% for category in categories %}
+## {{ category.name }} ({{ category.completion_pct | round(1) }}% complete)
+
+**Required Documents:**
+{% for doc in category.required_docs %}
+- {% if doc in category.uploaded_docs %}[x]{% else %}[ ]{% endif %} {{ doc }}
+{% endfor %}
+
+{% endfor %}

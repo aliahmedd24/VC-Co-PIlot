@@ -1,0 +1,13 @@
+# {{ title }}
+
+{% for metric in metrics %}
+## {{ metric.name }}
+- **Current:** {{ metric.current_value }}{% if metric.unit %} {{ metric.unit }}{% endif %}
+
+{% if metric.target_value is not none %}- **Target:** {{ metric.target_value }}{% if metric.unit %} {{ metric.unit }}{% endif %}{% endif %}
+
+{% if metric.trend %}- **Trend:** {{ metric.trend }}{% endif %}
+
+{% if metric.category %}- **Category:** {{ metric.category }}{% endif %}
+
+{% endfor %}

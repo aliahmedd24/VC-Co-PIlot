@@ -1,0 +1,27 @@
+# {{ title }}
+
+## Revenue Projections
+{% for proj in revenue_projections %}
+- **{{ proj.get('period', 'N/A') }}**: ${{ proj.get('amount', 0) | int }}{% if proj.get('assumptions') %} ({{ proj.get('assumptions') }}){% endif %}
+
+{% endfor %}
+
+## Cost Projections
+{% for proj in cost_projections %}
+- **{{ proj.get('period', 'N/A') }}**: ${{ proj.get('amount', 0) | int }}
+{% endfor %}
+
+## Key Metrics
+{% if runway_months is not none %}- **Runway:** {{ runway_months }} months{% endif %}
+
+{% if burn_rate is not none %}- **Monthly Burn Rate:** ${{ "{:,.0f}".format(burn_rate) }}{% endif %}
+
+## Unit Economics
+{% for key, value in unit_economics.items() %}
+- **{{ key }}**: {{ value }}
+{% endfor %}
+
+## Funding Scenarios
+{% for scenario in funding_scenarios %}
+- {{ scenario.get('name', 'Scenario') }}: {{ scenario.get('description', '') }}
+{% endfor %}

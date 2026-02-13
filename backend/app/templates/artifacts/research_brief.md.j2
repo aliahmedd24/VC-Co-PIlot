@@ -1,0 +1,22 @@
+# {{ title }}
+
+## Summary
+{{ summary }}
+
+## Key Findings
+{% for finding in key_findings %}
+- {{ finding }}
+{% endfor %}
+
+## Methodology
+{{ methodology }}
+
+## Sources
+{% for source in sources %}
+- {{ source }}
+{% endfor %}
+
+## Recommendations
+{% for rec in recommendations %}
+- {{ rec }}
+{% endfor %}

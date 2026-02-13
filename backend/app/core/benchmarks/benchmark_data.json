@@ -1,0 +1,97 @@
+{
+  "cohorts": [
+    {
+      "industry": "saas",
+      "stage": "seed",
+      "label": "Seed SaaS",
+      "companies": [
+        {"mrr_growth": 15, "burn_rate": 50000, "cac": 200, "ltv": 2400, "gross_margin": 75, "arr": 120000, "runway_months": 18},
+        {"mrr_growth": 20, "burn_rate": 60000, "cac": 180, "ltv": 3000, "gross_margin": 80, "arr": 200000, "runway_months": 15},
+        {"mrr_growth": 10, "burn_rate": 40000, "cac": 250, "ltv": 2000, "gross_margin": 70, "arr": 80000, "runway_months": 20},
+        {"mrr_growth": 25, "burn_rate": 80000, "cac": 150, "ltv": 3600, "gross_margin": 82, "arr": 350000, "runway_months": 12},
+        {"mrr_growth": 8, "burn_rate": 35000, "cac": 300, "ltv": 1800, "gross_margin": 65, "arr": 60000, "runway_months": 24},
+        {"mrr_growth": 30, "burn_rate": 100000, "cac": 120, "ltv": 4200, "gross_margin": 85, "arr": 500000, "runway_months": 10},
+        {"mrr_growth": 12, "burn_rate": 45000, "cac": 220, "ltv": 2200, "gross_margin": 72, "arr": 100000, "runway_months": 16},
+        {"mrr_growth": 18, "burn_rate": 55000, "cac": 190, "ltv": 2800, "gross_margin": 78, "arr": 180000, "runway_months": 14},
+        {"mrr_growth": 22, "burn_rate": 70000, "cac": 160, "ltv": 3200, "gross_margin": 80, "arr": 280000, "runway_months": 13},
+        {"mrr_growth": 5, "burn_rate": 30000, "cac": 350, "ltv": 1500, "gross_margin": 60, "arr": 40000, "runway_months": 30}
+      ]
+    },
+    {
+      "industry": "saas",
+      "stage": "series_a",
+      "label": "Series A SaaS",
+      "companies": [
+        {"mrr_growth": 12, "burn_rate": 150000, "cac": 300, "ltv": 5000, "gross_margin": 78, "arr": 1200000, "runway_months": 18},
+        {"mrr_growth": 15, "burn_rate": 200000, "cac": 250, "ltv": 6000, "gross_margin": 82, "arr": 2000000, "runway_months": 15},
+        {"mrr_growth": 8, "burn_rate": 120000, "cac": 400, "ltv": 4000, "gross_margin": 72, "arr": 800000, "runway_months": 20},
+        {"mrr_growth": 20, "burn_rate": 250000, "cac": 200, "ltv": 7500, "gross_margin": 85, "arr": 3500000, "runway_months": 12},
+        {"mrr_growth": 10, "burn_rate": 180000, "cac": 350, "ltv": 4500, "gross_margin": 75, "arr": 1500000, "runway_months": 16},
+        {"mrr_growth": 18, "burn_rate": 220000, "cac": 220, "ltv": 6500, "gross_margin": 80, "arr": 2800000, "runway_months": 14},
+        {"mrr_growth": 6, "burn_rate": 100000, "cac": 500, "ltv": 3500, "gross_margin": 68, "arr": 600000, "runway_months": 24},
+        {"mrr_growth": 25, "burn_rate": 300000, "cac": 180, "ltv": 8000, "gross_margin": 88, "arr": 5000000, "runway_months": 10}
+      ]
+    },
+    {
+      "industry": "fintech",
+      "stage": "seed",
+      "label": "Seed Fintech",
+      "companies": [
+        {"mrr_growth": 12, "burn_rate": 70000, "cac": 300, "ltv": 3500, "gross_margin": 60, "arr": 150000, "runway_months": 16},
+        {"mrr_growth": 18, "burn_rate": 90000, "cac": 250, "ltv": 4000, "gross_margin": 65, "arr": 250000, "runway_months": 14},
+        {"mrr_growth": 8, "burn_rate": 50000, "cac": 400, "ltv": 2500, "gross_margin": 55, "arr": 90000, "runway_months": 20},
+        {"mrr_growth": 22, "burn_rate": 110000, "cac": 200, "ltv": 5000, "gross_margin": 70, "arr": 400000, "runway_months": 12},
+        {"mrr_growth": 15, "burn_rate": 80000, "cac": 280, "ltv": 3800, "gross_margin": 62, "arr": 200000, "runway_months": 15},
+        {"mrr_growth": 10, "burn_rate": 60000, "cac": 350, "ltv": 3000, "gross_margin": 58, "arr": 120000, "runway_months": 18}
+      ]
+    },
+    {
+      "industry": "fintech",
+      "stage": "series_a",
+      "label": "Series A Fintech",
+      "companies": [
+        {"mrr_growth": 10, "burn_rate": 200000, "cac": 400, "ltv": 6000, "gross_margin": 62, "arr": 1500000, "runway_months": 16},
+        {"mrr_growth": 15, "burn_rate": 280000, "cac": 320, "ltv": 7500, "gross_margin": 68, "arr": 2500000, "runway_months": 14},
+        {"mrr_growth": 20, "burn_rate": 350000, "cac": 250, "ltv": 9000, "gross_margin": 72, "arr": 4000000, "runway_months": 12},
+        {"mrr_growth": 8, "burn_rate": 180000, "cac": 500, "ltv": 5000, "gross_margin": 58, "arr": 1000000, "runway_months": 18},
+        {"mrr_growth": 12, "burn_rate": 240000, "cac": 380, "ltv": 6500, "gross_margin": 65, "arr": 2000000, "runway_months": 15}
+      ]
+    },
+    {
+      "industry": "healthtech",
+      "stage": "seed",
+      "label": "Seed HealthTech",
+      "companies": [
+        {"mrr_growth": 10, "burn_rate": 60000, "cac": 350, "ltv": 3000, "gross_margin": 65, "arr": 100000, "runway_months": 18},
+        {"mrr_growth": 15, "burn_rate": 80000, "cac": 280, "ltv": 4000, "gross_margin": 70, "arr": 200000, "runway_months": 15},
+        {"mrr_growth": 6, "burn_rate": 45000, "cac": 450, "ltv": 2000, "gross_margin": 58, "arr": 60000, "runway_months": 22},
+        {"mrr_growth": 20, "burn_rate": 100000, "cac": 200, "ltv": 5000, "gross_margin": 75, "arr": 350000, "runway_months": 12},
+        {"mrr_growth": 12, "burn_rate": 70000, "cac": 320, "ltv": 3500, "gross_margin": 68, "arr": 150000, "runway_months": 16}
+      ]
+    },
+    {
+      "industry": "ecommerce",
+      "stage": "seed",
+      "label": "Seed E-commerce",
+      "companies": [
+        {"mrr_growth": 8, "burn_rate": 40000, "cac": 50, "ltv": 300, "gross_margin": 35, "arr": 200000, "runway_months": 18},
+        {"mrr_growth": 15, "burn_rate": 60000, "cac": 40, "ltv": 400, "gross_margin": 40, "arr": 400000, "runway_months": 14},
+        {"mrr_growth": 5, "burn_rate": 30000, "cac": 70, "ltv": 250, "gross_margin": 30, "arr": 120000, "runway_months": 22},
+        {"mrr_growth": 20, "burn_rate": 80000, "cac": 30, "ltv": 500, "gross_margin": 45, "arr": 600000, "runway_months": 12},
+        {"mrr_growth": 12, "burn_rate": 50000, "cac": 45, "ltv": 350, "gross_margin": 38, "arr": 300000, "runway_months": 16}
+      ]
+    },
+    {
+      "industry": "marketplace",
+      "stage": "seed",
+      "label": "Seed Marketplace",
+      "companies": [
+        {"mrr_growth": 18, "burn_rate": 80000, "cac": 100, "ltv": 1200, "gross_margin": 55, "arr": 250000, "runway_months": 14},
+        {"mrr_growth": 25, "burn_rate": 120000, "cac": 80, "ltv": 1500, "gross_margin": 60, "arr": 500000, "runway_months": 10},
+        {"mrr_growth": 10, "burn_rate": 50000, "cac": 150, "ltv": 800, "gross_margin": 45, "arr": 100000, "runway_months": 20},
+        {"mrr_growth": 15, "burn_rate": 70000, "cac": 120, "ltv": 1000, "gross_margin": 50, "arr": 200000, "runway_months": 16},
+        {"mrr_growth": 30, "burn_rate": 150000, "cac": 60, "ltv": 1800, "gross_margin": 65, "arr": 800000, "runway_months": 8}
+      ]
+    }
+  ]
+}

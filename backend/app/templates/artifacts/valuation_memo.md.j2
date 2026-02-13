@@ -1,0 +1,26 @@
+# {{ title }}
+
+## Methodology
+{{ methodology }}
+
+## Valuation Range
+{% if range_low is not none and range_high is not none %}
+- **Low:** ${{ "{:,.0f}".format(range_low) }}
+- **High:** ${{ "{:,.0f}".format(range_high) }}
+{% if recommended is not none %}
+- **Recommended:** ${{ "{:,.0f}".format(recommended) }}
+{% endif %}
+{% endif %}
+
+## Comparables
+{% for comp in comparables %}
+| {{ comp.get('company', 'N/A') }} | {{ comp.get('multiple', 'N/A') }} |
+{% endfor %}
+
+## Assumptions
+{% for assumption in assumptions %}
+- {{ assumption.get('description', assumption) }}
+{% endfor %}
+
+## Narrative
+{{ narrative }}

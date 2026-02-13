@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(poetry lock:*)",
+      "Bash(poetry install:*)",
+      "Bash(ls:*)",
+      "Bash(npx next build:*)",
+      "Bash(npx jest --verbose)",
+      "Bash(poetry add:*)",
+      "Bash(poetry show:*)",
+      "Bash(poetry run ruff check:*)",
+      "Bash(poetry run mypy:*)",
+      "Bash(poetry run pytest:*)",
+      "Bash(pnpm lint:*)"
+    ]
+  }
+}

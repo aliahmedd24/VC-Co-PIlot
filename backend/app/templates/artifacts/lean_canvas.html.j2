@@ -1,0 +1,49 @@
+{% extends "base.html.j2" %}
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="section">
+<h2>Problem</h2>
+<ul>{% for item in problem %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Solution</h2>
+<ul>{% for item in solution %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section highlight">
+<h2>Unique Value Proposition</h2>
+<p>{{ unique_value_prop }}</p>
+</div>
+
+<div class="section">
+<h2>Unfair Advantage</h2>
+<p>{{ unfair_advantage }}</p>
+</div>
+
+<div class="section">
+<h2>Customer Segments</h2>
+<ul>{% for item in customer_segments %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Channels</h2>
+<ul>{% for item in channels %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Key Metrics</h2>
+<ul>{% for item in key_metrics %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Revenue Streams</h2>
+<ul>{% for item in revenue_streams %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+
+<div class="section">
+<h2>Cost Structure</h2>
+<ul>{% for item in cost_structure %}<li>{{ item }}</li>{% endfor %}</ul>
+</div>
+{% endblock %}

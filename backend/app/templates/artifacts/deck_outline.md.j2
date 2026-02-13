@@ -1,0 +1,17 @@
+# {{ title }}
+
+{% for slide in slides %}
+## Slide {{ loop.index }}: {{ slide.title }}
+
+**Key Points:**
+{% for point in slide.key_points %}
+- {{ point }}
+{% endfor %}
+{% if slide.visual_suggestion %}
+**Visual:** {{ slide.visual_suggestion }}
+{% endif %}
+{% if slide.speaker_notes %}
+**Speaker Notes:** {{ slide.speaker_notes }}
+{% endif %}
+
+{% endfor %}
