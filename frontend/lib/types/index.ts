@@ -310,6 +310,14 @@ export interface SSEDoneEvent {
   artifact_id: string | null;
 }
 
+export interface SSEToolCallEvent {
+  tool: string;
+}
+
+export interface SSEToolResultEvent {
+  tool: string;
+}
+
 // ── Tool Types ──
 
 export interface ValuationRequest {

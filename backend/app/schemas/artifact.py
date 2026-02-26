@@ -25,7 +25,7 @@ class ArtifactChatRequest(BaseModel):
 
 
 class ArtifactExportRequest(BaseModel):
-    format: Literal["markdown", "pdf"]
+    format: Literal["markdown", "pdf", "pptx", "docx", "xlsx"]
 
 
 class ArtifactResponse(BaseModel):

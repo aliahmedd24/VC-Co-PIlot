@@ -4,13 +4,16 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user
 from app.core.agents.registry import agent_registry
+from app.core.artifacts.exporters.docx_exporter import docx_exporter
 from app.core.artifacts.exporters.markdown_exporter import markdown_exporter
+from app.core.artifacts.exporters.pptx_exporter import pptx_exporter
+from app.core.artifacts.exporters.xlsx_exporter import xlsx_exporter
 from app.core.artifacts.manager import artifact_manager
 from app.core.brain.startup_brain import startup_brain
 from app.core.router.moe_router import moe_router
@@ -403,13 +406,105 @@ async def export_artifact(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> PlainTextResponse | ExportTaskResponse:
-    """Export artifact to markdown (sync) or PDF (async via Celery)."""
+) -> PlainTextResponse | StreamingResponse | ExportTaskResponse:
+    """Export artifact to markdown, PPTX (sync), or PDF (async via Celery)."""
     artifact = await _verify_artifact_access(artifact_id, current_user.id, db)
 
     if export_request.format == "markdown":
         md = markdown_exporter.export(artifact.type, artifact.title, artifact.content)
         return PlainTextResponse(content=md, media_type="text/markdown")
+
+    if export_request.format == "pptx":
+        import io
+
+        from app.models.artifact import ArtifactType
+
+        if artifact.type != ArtifactType.DECK_OUTLINE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="PPTX export is only available for deck_outline artifacts",
+            )
+        pptx_bytes = pptx_exporter.export(
+            artifact.type, artifact.title, artifact.content,
+        )
+        safe_title = artifact.title[:40].replace(" ", "_")
+        filename = f"{safe_title}.pptx"
+        return StreamingResponse(
+            io.BytesIO(pptx_bytes),
+            media_type=(
+                "application/vnd.openxmlformats-officedocument"
+                ".presentationml.presentation"
+            ),
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+
+    if export_request.format == "docx":
+        import io as _io
+
+        from app.core.artifacts.exporters.docx_exporter import (
+            _SUPPORTED_TYPES as _DOCX_TYPES,
+        )
+
+        if artifact.type not in _DOCX_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"DOCX export not supported for "
+                    f"{artifact.type.value}"
+                ),
+            )
+        docx_bytes = docx_exporter.export(
+            artifact.type, artifact.title, artifact.content,
+        )
+        safe_title = artifact.title[:40].replace(" ", "_")
+        filename = f"{safe_title}.docx"
+        return StreamingResponse(
+            _io.BytesIO(docx_bytes),
+            media_type=(
+                "application/vnd.openxmlformats-officedocument"
+                ".wordprocessingml.document"
+            ),
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{filename}"'
+                ),
+            },
+        )
+
+    if export_request.format == "xlsx":
+        import io as _io2
+
+        from app.core.artifacts.exporters.xlsx_exporter import (
+            _SUPPORTED_TYPES as _XLSX_TYPES,
+        )
+
+        if artifact.type not in _XLSX_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"XLSX export not supported for "
+                    f"{artifact.type.value}"
+                ),
+            )
+        xlsx_bytes = xlsx_exporter.export(
+            artifact.type, artifact.title, artifact.content,
+        )
+        safe_title = artifact.title[:40].replace(" ", "_")
+        filename = f"{safe_title}.xlsx"
+        return StreamingResponse(
+            _io2.BytesIO(xlsx_bytes),
+            media_type=(
+                "application/vnd.openxmlformats-officedocument"
+                ".spreadsheetml.sheet"
+            ),
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{filename}"'
+                ),
+            },
+        )
 
     # PDF export via Celery
     from app.workers.export_tasks import export_artifact_pdf
@@ -418,4 +513,39 @@ async def export_artifact(
     return ExportTaskResponse(
         task_id=task.id,
         status="pending",
+    )
+
+
+@router.get("/downloads/{filename}")
+async def download_generated_file(
+    filename: str,
+) -> StreamingResponse:
+    """Download a generated file (e.g. PPTX from generate_presentation tool)."""
+    import tempfile
+    from pathlib import Path
+
+    generated_dir = Path(tempfile.gettempdir()) / "vc_copilot_generated"
+    filepath = (generated_dir / filename).resolve()
+
+    # Path traversal protection
+    if not str(filepath).startswith(str(generated_dir.resolve())):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid filename",
+        )
+    if not filepath.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found",
+        )
+
+    return StreamingResponse(
+        open(filepath, "rb"),  # noqa: SIM115
+        media_type=(
+            "application/vnd.openxmlformats-officedocument"
+            ".presentationml.presentation"
+        ),
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )

@@ -11,7 +11,16 @@
       "Bash(poetry run ruff check:*)",
       "Bash(poetry run mypy:*)",
       "Bash(poetry run pytest:*)",
-      "Bash(pnpm lint:*)"
+      "Bash(pnpm lint:*)",
+      "Bash(python -m ruff check:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm test:*)",
+      "Bash(grep:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:gofastmcp.com)",
+      "WebFetch(domain:workos.com)",
+      "WebFetch(domain:blog.fka.dev)",
+      "WebFetch(domain:thinhdanggroup.github.io)"
     ]
   }
 }

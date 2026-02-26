@@ -67,6 +67,11 @@ def test_build_system_prompt() -> None:
     assert "[Source: doc-123]" in prompt
     assert "You are a test agent" in prompt
 
+    # Skill content is only injected if SKILL.md exists for the agent.
+    # test-agent has no SKILL.md, so "## Domain Expertise" should NOT appear
+    # (this confirms the loader handles missing skills gracefully).
+    assert "## Domain Expertise" not in prompt
+
 
 def test_extract_citations() -> None:
     text = (

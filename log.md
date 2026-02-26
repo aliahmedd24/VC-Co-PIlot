@@ -488,3 +488,224 @@
 - Full E2E testing with Docker infrastructure
 - Production deployment configuration
 - Consider additional polish or performance optimization
+
+---
+
+## Session — 2026-02-13 18:00 (UTC)
+
+**Phase:** Post-Phase 6
+**Focus:** Agent Tool Calling System — Sprint 1 (Foundation + Engine Tools + Brain Tools + SSE Wiring)
+**Branch:** main
+
+### Completed
+- **Tool Package (`backend/app/core/tools/`)**: ToolRegistry (singleton registry with `AGENT_TOOL_MAP` for all 11 agents), ToolDefinition (Pydantic model with Claude-format JSON schema), ToolExecutor (per-execution context with DB/brain/venture injection, caching, timeout, graceful error handling)
+- **5 Engine Tool Handlers** (`engine_tools.py`): `run_valuation`, `score_readiness`, `model_scenario`, `rank_benchmarks`, `match_success_stories` — wrappers around existing singleton engines
+- **4 Brain/Knowledge Tool Handlers** (`brain_tools.py`): `query_entities` (advanced KG queries with type/status/confidence/keyword filtering), `search_brain` (iterative RAG retrieval), `detect_data_gaps` (KG quality heuristics analyzing coverage, confidence, staleness), `traverse_relations` (follow KG edges by relation type with direction control)
+- **Tool Use Loop in BaseAgent**: `_call_claude_with_tools()` implements Claude's tool_use/tool_result message loop (max 5 rounds configurable via `AgentConfig.max_tool_rounds`), `_stream_claude_with_tools()` for streaming with `__TOOL_CALL__`/`__TOOL_RESULT__` markers
+- **execute() + execute_streaming() Wiring**: Both methods now conditionally use tool loop when `tool_registry.get_tools_for_agent(agent_id)` returns tools, creating `ToolExecutor` with full context
+- **MoE Router Integration**: `_build_plan()` populates `RoutingPlan.tools` from `tool_registry.get_tool_names_for_agent(agent_id)` instead of hardcoded `[]`
+- **SSE Streaming Tool Events**: `_sse_event_stream()` parses `__TOOL_CALL__`/`__TOOL_RESULT__` markers from streaming, emits `event: tool_call` and `event: tool_result` SSE events
+- **Frontend SSE Types**: Added `SSEToolCallEvent`, `SSEToolResultEvent` interfaces to `index.ts`
+- **Frontend Streaming Client**: `sendMessageStreaming()` now handles `tool_call`/`tool_result` events via optional `onToolCall`/`onToolResult` callbacks in `StreamCallbacks`
+- **Frontend Hook**: `useStreaming` tracks `activeTools` (tools currently executing) and `toolResults` (completed tools) state
+- **32 new backend tests** (176 total): tool registry, engine tools, brain tools — all passing
+- Backend: 176 tests passing, ruff clean, mypy strict clean (141 source files)
+- Frontend: 30 tests passing, pnpm lint clean, pnpm build clean (0 type errors)
+
+### Changed Files
+- `backend/app/core/tools/__init__.py` — package init (new)
+- `backend/app/core/tools/registry.py` — ToolRegistry, ToolDefinition, ToolEntry, AGENT_TOOL_MAP (new)
+- `backend/app/core/tools/executor.py` — ToolExecutor with caching + timeout + error handling (new)
+- `backend/app/core/tools/engine_tools.py` — 5 engine tool handlers + registration (new)
+- `backend/app/core/tools/brain_tools.py` — 4 knowledge tool handlers + registration (new)
+- `backend/app/core/agents/base.py` — added `_call_claude_with_tools()`, `_stream_claude_with_tools()`, updated `execute()` + `execute_streaming()` to conditionally use tools, added `max_tool_rounds` to `AgentConfig`
+- `backend/app/core/router/moe_router.py` — `_build_plan()` uses `tool_registry.get_tool_names_for_agent()`
+- `backend/app/api/routes/chat.py` — `_sse_event_stream()` handles `__TOOL_CALL__`/`__TOOL_RESULT__` markers, emits `tool_call`/`tool_result` SSE events
+- `frontend/lib/types/index.ts` — added `SSEToolCallEvent`, `SSEToolResultEvent` interfaces
+- `frontend/lib/api/chat.ts` — added `onToolCall`/`onToolResult` to `StreamCallbacks`, handles `tool_call`/`tool_result` SSE events
+- `frontend/lib/hooks/useStreaming.ts` — added `activeTools`/`toolResults` state tracking
+- `backend/tests/unit/test_tool_registry.py` — registry + agent tool mapping tests (new)
+- `backend/tests/unit/test_engine_tools.py` — engine handler tests (new)
+- `backend/tests/unit/test_brain_tools.py` — brain handler tests (new)
+
+### Decisions Made
+- Tools use per-execution caching in ToolExecutor (same tool + same input = same result) to avoid redundant computation within a single agent run
+- Tool results serialized to JSON and truncated at 8000 chars to prevent token budget explosion
+- ToolExecutor returns error dicts (not exceptions) so Claude can reason about failures and adjust
+- `_stream_claude_with_tools` uses special `__TOOL_CALL__`/`__TOOL_RESULT__` string markers in the token stream, parsed by the SSE handler — simpler than a separate event channel
+- AGENT_TOOL_MAP is static (not DB-configurable) — appropriate for the current 11-agent architecture; can be moved to config later
+- Brain tools query the DB directly with SQLAlchemy (not through REST API) since they run in-process with full async session context
+
+### Blockers / Open Issues
+- Docker infrastructure not yet tested (carried from Phase 1)
+- Tier 3 (web_search, fetch_url) and Tier 4 (create_artifact, update_artifact, delegate_to_agent) tools not yet implemented — planned for Sprint 3-4
+- Frontend `StreamingMessage` component does not yet visually render tool activity indicators (types/state are ready)
+
+### Next Steps
+- Build tool activity UI in `StreamingMessage.tsx` (show which tools are executing during streaming)
+- Sprint 2: Knowledge tools refinements + traverse_relations KG method improvements
+- Sprint 3: External research tools (Tavily/Brave Search integration)
+- Sprint 4: Artifact tools + agent delegation
+
+---
+
+## Session — 2026-02-16 12:00 (UTC)
+
+**Phase:** Post-Phase 6
+**Focus:** Agent Tool Calling — Sprint 1 refinements, KG enhancements, frontend tool UI, full verification
+**Branch:** main
+
+### Completed
+- **KnowledgeGraph enhancements** (`knowledge_graph.py`): Added `search_entities_advanced()` with min_confidence, status_filter, stale_days params; `get_relations()` for querying KGRelation by entity IDs/type/direction; `traverse()` for full graph traversal combining entity lookup, relation query, and connected entity loading
+- **Brain tools refactored** (`brain_tools.py`): `handle_query_entities` and `handle_traverse_relations` now delegate to KG methods instead of raw SQL; `handle_detect_data_gaps` enhanced with staleness analysis (30+ day flag), evidence coverage (no-evidence flag), data completeness scoring (`_COMPLETENESS_FIELDS` per entity type), and completeness-based recommendations
+- **Frontend StreamingMessage tool UI** (`StreamingMessage.tsx`): Fixed gerund generation bug ("Runing" → "Running") by adding consonant-doubling logic for short CVC words (run, get, set, put, etc.)
+- **KG tests** (`test_knowledge_graph.py`): 4 new tests — `search_entities_advanced` confidence/status/combined filters, `get_relations` outgoing + type filter, `traverse` returns connected entities + no-match case
+- **Brain tool tests** (`test_brain_tools.py`): Updated to mock `search_entities_advanced` and `traverse`; added staleness, evidence coverage, completeness scoring tests
+- **All linters + tests pass**: ruff clean, mypy --strict clean (141 files), 186 backend tests, 33 frontend tests, pnpm lint clean, pnpm build clean
+
+### Changed Files
+- `backend/app/core/brain/kg/knowledge_graph.py` — added `search_entities_advanced()`, `get_relations()`, `traverse()` methods
+- `backend/app/core/tools/brain_tools.py` — refactored handlers to delegate to KG; added `_COMPLETENESS_FIELDS`, staleness/evidence/completeness analysis
+- `backend/tests/unit/test_knowledge_graph.py` — 4 new KG method tests
+- `backend/tests/unit/test_brain_tools.py` — refactored to mock KG methods; added staleness/evidence/completeness tests
+- `frontend/components/chat/StreamingMessage.tsx` — fixed `toolDisplayName()` consonant-doubling for gerund form
+
+### Decisions Made
+- `from datetime import UTC` (not `timezone.utc`) — ruff UP017 requires the Python 3.11+ `UTC` alias
+- Brain tool handlers delegate to KG methods (not raw SQL) — keeps query logic in the KG class where it belongs
+- `_COMPLETENESS_FIELDS` defines expected fields per entity type for quality scoring — simple heuristic, no LLM needed
+- Consonant-doubling set (`run`, `get`, `set`, `put`, `cut`, `hit`, `map`, `log`) for English gerund correctness in tool labels
+
+### Blockers / Open Issues
+- Docker infrastructure not yet tested (carried from Phase 1)
+- Tier 3 (web_search) and Tier 4 (create_artifact, delegate_to_agent) tools not yet implemented
+
+### Next Steps
+- Sprint 3: External research tools (Tavily/Brave Search integration)
+- Sprint 4: Artifact tools + agent delegation
+- Consider adding more KG traversal capabilities (multi-hop, weighted paths)
+
+---
+
+## Session — 2026-02-16 14:00 (UTC)
+
+**Phase:** Post-Phase 6
+**Focus:** Sprint 3 — Artifact Tools + Sprint 2 validation
+**Branch:** main
+
+### Completed
+- **Sprint 2 validated as COMPLETE**: all 6 items confirmed (query_entities, detect_data_gaps, search_brain, traverse_relations, SSE streaming, tests)
+- **Artifact Tool Handlers** (`artifact_tools.py`): `create_artifact` and `update_artifact` with content schema validation, agent authorization (`_AGENT_ARTIFACT_TYPES`), workspace boundary checks, optimistic locking
+- **ToolExecutor `agent_id`**: Added `agent_id` param to ToolExecutor, passed from BaseAgent — enables artifact tools to validate agent permissions
+- **AGENT_TOOL_MAP updated**: `create_artifact` + `update_artifact` added to all 10 agents with `can_create_artifacts` (qa-simulator excluded)
+- **Registration**: `register_artifact_tools()` called from `main.py` lifespan alongside engine and brain tools
+- **9 artifact tool tests**: create success, unauthorized type, custom type bypass, invalid content, update success, not found, wrong workspace, invalid UUID, version conflict
+- **All checks pass**: ruff clean, mypy --strict clean (143 files), 195 backend tests, 33 frontend tests
+
+### Changed Files
+- `backend/app/core/tools/artifact_tools.py` — new: 2 tool handlers, `_AGENT_ARTIFACT_TYPES` dict, `register_artifact_tools()` (new)
+- `backend/app/core/tools/executor.py` — added `agent_id: str` param
+- `backend/app/core/tools/registry.py` — added `create_artifact`/`update_artifact` to 10 agents in AGENT_TOOL_MAP
+- `backend/app/core/agents/base.py` — pass `agent_id=self.config.id` to ToolExecutor in both execute() and execute_streaming()
+- `backend/app/main.py` — added `register_artifact_tools()` call
+- `backend/tests/unit/test_artifact_tools.py` — 9 tests (new)
+
+### Decisions Made
+- `_AGENT_ARTIFACT_TYPES` mirrors `AgentConfig.can_create_artifacts` — static dict, not DB-configurable
+- `custom` artifact type bypasses agent authorization — any agent can create custom artifacts
+- Content validated against `CONTENT_SCHEMA_MAP` before creation/update — catches wrong types early
+- Workspace boundary enforced on update_artifact — prevents cross-workspace artifact modification
+- `agent_id` added to ToolExecutor with `""` default — backwards-compatible with existing tests
+
+### Blockers / Open Issues
+- Docker infrastructure not yet tested (carried from Phase 1)
+- Tier 3 (web_search, fetch_url) tools not yet implemented
+- `delegate_to_agent` tool not yet implemented
+
+### Next Steps
+- Sprint 4: External research tools (Tavily/Brave Search API)
+- Sprint 5: `delegate_to_agent` tool with recursion guard
+
+---
+
+## Session — 2026-02-16 16:00 (UTC)
+
+**Phase:** Post-Phase 6
+**Focus:** Sprint 4 — External Research Tools (web_search, fetch_url)
+**Branch:** main
+
+### Completed
+- **Research Tool Handlers** (`research_tools.py`): `web_search` via Tavily REST API with clamped max_results (1-10), search depth (basic/advanced), error handling for HTTP and network failures; `fetch_url` with HTML text extraction (`_strip_html`), protocol validation, content truncation, redirect following
+- **Config**: Added `tavily_api_key: str` to Settings (pydantic-settings, env: `TAVILY_API_KEY`)
+- **Dependency**: Added `httpx ^0.28.0` as main dependency (was dev-only, needed for production web requests)
+- **AGENT_TOOL_MAP updated**: `web_search` + `fetch_url` added to market-oracle and icp-profiler; `web_search` added to pre-mortem-critic
+- **Registration**: `register_research_tools()` called from `main.py` lifespan
+- **14 new tests**: 3 `_strip_html` (tags, scripts/styles, entities), 5 `web_search` (no API key, success, HTTP error, network error, max_results clamp), 6 `fetch_url` (invalid protocol, HTML extraction, plain text, truncation, HTTP error, network error)
+- **All checks pass**: ruff clean, mypy --strict clean (145 files), 209 backend tests, 33 frontend tests
+
+### Changed Files
+- `backend/app/core/tools/research_tools.py` — new: 2 tool handlers, `_strip_html` helper, `register_research_tools()` (new)
+- `backend/app/core/tools/registry.py` — added `web_search`/`fetch_url` to 3 agents in AGENT_TOOL_MAP
+- `backend/app/main.py` — added `register_research_tools()` call
+- `backend/app/config.py` — added `tavily_api_key` setting
+- `backend/pyproject.toml` — added `httpx ^0.28.0` to main dependencies
+- `backend/tests/unit/test_research_tools.py` — 14 tests (new)
+
+### Decisions Made
+- **Tavily REST API** (not tavily-python SDK): avoids new dependency, httpx already available via anthropic
+- **`_strip_html` with regex**: stdlib-only HTML→text, strips scripts/styles/tags, decodes common entities; avoids beautifulsoup4 dependency
+- **`web_search` for 3 agents**: market-oracle + icp-profiler (both search + fetch), pre-mortem-critic (search only — validates risks against external data)
+- **`fetch_url` max_chars capped at 8000**: aligns with ToolDefinition.max_result_chars to prevent token budget explosion
+- **Protocol validation**: fetch_url rejects non-http(s) URLs upfront
+- **Graceful API key check**: web_search returns structured error if TAVILY_API_KEY not configured (no crash)
+
+### Blockers / Open Issues
+- Docker infrastructure not yet tested (carried from Phase 1)
+- `delegate_to_agent` tool not yet implemented
+
+### Next Steps
+- Sprint 5: `delegate_to_agent` tool with recursion guard (`max_delegation_depth=1`)
+- Consider adding Brave Search as fallback/alternative to Tavily
+
+---
+
+## Session — 2026-02-24 10:00 (UTC)
+
+**Phase:** Post-Phase 6
+**Focus:** Sprint 4 (research tools) + Sprint 5 (delegate_to_agent)
+**Branch:** main
+**Continuing from session 2026-02-16.**
+
+### Completed
+- **Sprint 4 verified**: 209 tests passing, ruff clean, mypy strict clean, 14 research tool tests
+- **Sprint 5: Delegation Tool** (`delegation_tools.py`): `delegate_to_agent` handler with `MAX_DELEGATION_DEPTH=1` recursion guard, self-delegation rejection, unknown agent validation, lightweight RoutingPlan for delegated execution
+- **BaseAgent `use_tools` param**: Added `use_tools: bool = True` to `execute()` — when False, agent runs without tools (no tool_use loop), enabling safe delegation
+- **ToolExecutor `delegation_depth`**: Added `delegation_depth: int = 0` param for tracking delegation chains
+- **AGENT_TOOL_MAP updated**: `delegate_to_agent` added to 5 agents: venture-architect, market-oracle, pre-mortem-critic, storyteller, deck-architect
+- **Registration**: `register_delegation_tools()` called from `main.py` lifespan
+- **8 delegation tests**: success, context passing, self-delegation rejected, depth limit, unknown agent, routing plan validation, error propagation, depth-zero allowed
+- **All checks pass**: ruff clean, mypy --strict clean (147 files), 217 backend tests, 33 frontend tests
+
+### Changed Files
+- `backend/app/core/tools/delegation_tools.py` — new: `delegate_to_agent` handler, `MAX_DELEGATION_DEPTH`, `register_delegation_tools()` (new)
+- `backend/app/core/agents/base.py` — added `use_tools: bool = True` param to `execute()`
+- `backend/app/core/tools/executor.py` — added `delegation_depth: int = 0` param
+- `backend/app/core/tools/registry.py` — added `delegate_to_agent` to 5 agents in AGENT_TOOL_MAP
+- `backend/app/main.py` — added `register_delegation_tools()` call
+- `backend/tests/unit/test_delegation_tools.py` — 8 tests (new)
+
+### Decisions Made
+- **`MAX_DELEGATION_DEPTH=1`**: delegated agents run WITHOUT tools, preventing infinite chains
+- **`use_tools=False` for delegated agents**: cleaner than modifying tool registry per-call; delegated agents still get full venture context (RAG, entities) but no tool access
+- **5 agents get delegation**: venture-architect, market-oracle, pre-mortem-critic, storyteller, deck-architect — these benefit most from cross-agent consultation
+- **Self-delegation prevented**: explicit check before depth check (earlier, more descriptive error)
+- **Lightweight RoutingPlan for delegation**: `confidence=1.0`, `tools=[]`, reasoning notes delegation source
+- **Error propagation**: handler lets RuntimeError bubble up (ToolExecutor's try/except handles it at execution layer)
+
+### Blockers / Open Issues
+- Docker infrastructure not yet tested (carried from Phase 1)
+
+### Next Steps
+- All 5 tool calling sprints COMPLETE — tool system fully operational with 14 tools
+- Consider end-to-end integration testing with real LLM calls
+- Consider adding Brave Search as Tavily fallback

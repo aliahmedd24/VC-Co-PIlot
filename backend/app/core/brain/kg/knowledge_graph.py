@@ -271,6 +271,185 @@ class KnowledgeGraph:
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def search_entities_advanced(
+        self,
+        db: AsyncSession,
+        venture_id: uuid.UUID,
+        keyword: str | None = None,
+        entity_types: list[KGEntityType] | None = None,
+        min_confidence: float = 0.0,
+        status_filter: KGEntityStatus | None = None,
+        stale_days: int | None = None,
+        limit: int = 20,
+    ) -> list[KGEntity]:
+        """Search entities with advanced filtering beyond basic search_entities.
+
+        Args:
+            keyword: Text search within entity data JSON.
+            entity_types: Filter by entity types.
+            min_confidence: Minimum confidence threshold (0.0-1.0).
+            status_filter: Filter by entity status.
+            stale_days: If set, only return entities not updated in N days.
+            limit: Max entities to return (capped at 50).
+        """
+        from datetime import UTC, datetime, timedelta
+
+        limit = min(limit, 50)
+        stmt = (
+            select(KGEntity)
+            .options(selectinload(KGEntity.evidence))
+            .where(KGEntity.venture_id == venture_id)
+        )
+
+        if entity_types:
+            stmt = stmt.where(KGEntity.type.in_(entity_types))
+        if keyword:
+            stmt = stmt.where(
+                cast(KGEntity.data, String).ilike(f"%{keyword}%")
+            )
+        if min_confidence > 0.0:
+            stmt = stmt.where(KGEntity.confidence >= min_confidence)
+        if status_filter is not None:
+            stmt = stmt.where(KGEntity.status == status_filter)
+        if stale_days is not None:
+            cutoff = datetime.now(UTC) - timedelta(days=stale_days)
+            stmt = stmt.where(KGEntity.updated_at < cutoff)
+
+        stmt = stmt.order_by(KGEntity.confidence.desc()).limit(limit)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_relations(
+        self,
+        db: AsyncSession,
+        entity_ids: list[uuid.UUID],
+        relation_type: KGRelationType | None = None,
+        direction: str = "both",
+    ) -> list[KGRelation]:
+        """Query relations for given entity IDs with optional filtering.
+
+        Args:
+            entity_ids: Entity IDs to find relations for.
+            relation_type: Optional filter by relation type.
+            direction: 'outgoing', 'incoming', or 'both'.
+        """
+        from sqlalchemy import or_
+
+        stmt = select(KGRelation)
+
+        if direction == "outgoing":
+            stmt = stmt.where(KGRelation.from_entity_id.in_(entity_ids))
+        elif direction == "incoming":
+            stmt = stmt.where(KGRelation.to_entity_id.in_(entity_ids))
+        else:
+            stmt = stmt.where(
+                or_(
+                    KGRelation.from_entity_id.in_(entity_ids),
+                    KGRelation.to_entity_id.in_(entity_ids),
+                )
+            )
+
+        if relation_type is not None:
+            stmt = stmt.where(KGRelation.type == relation_type)
+
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def traverse(
+        self,
+        db: AsyncSession,
+        venture_id: uuid.UUID,
+        entity_type: KGEntityType,
+        entity_name: str | None = None,
+        relation_type: KGRelationType | None = None,
+        direction: str = "both",
+        start_limit: int = 10,
+    ) -> dict[str, Any]:
+        """Traverse KG relations from entities matching criteria.
+
+        Combines entity lookup, relation query, and connected entity loading
+        into a single encapsulated operation.
+
+        Returns:
+            Dict with start_entities count, relation_count, and detailed
+            relations list including from/to entity data.
+        """
+        # 1. Find starting entities
+        stmt = (
+            select(KGEntity)
+            .where(
+                KGEntity.venture_id == venture_id,
+                KGEntity.type == entity_type,
+            )
+        )
+        if entity_name:
+            stmt = stmt.where(
+                cast(KGEntity.data, String).ilike(f"%{entity_name}%")
+            )
+        stmt = stmt.limit(start_limit)
+        result = await db.execute(stmt)
+        start_entities = list(result.scalars().all())
+
+        if not start_entities:
+            return {
+                "start_entities": 0,
+                "relation_count": 0,
+                "relations": [],
+                "message": f"No {entity_type.value} entities found matching criteria.",
+            }
+
+        entity_ids = [e.id for e in start_entities]
+
+        # 2. Find relations
+        relations = await self.get_relations(db, entity_ids, relation_type, direction)
+
+        # 3. Fetch connected entities
+        connected_ids = set()
+        for rel in relations:
+            connected_ids.add(rel.from_entity_id)
+            connected_ids.add(rel.to_entity_id)
+        connected_ids -= set(entity_ids)
+
+        connected_entities: dict[str, dict[str, Any]] = {}
+        if connected_ids:
+            conn_stmt = select(KGEntity).where(KGEntity.id.in_(list(connected_ids)))
+            conn_result = await db.execute(conn_stmt)
+            for e in conn_result.scalars().all():
+                connected_entities[str(e.id)] = {
+                    "type": e.type.value,
+                    "data": e.data,
+                    "confidence": e.confidence,
+                }
+
+        # Build start entity lookup
+        start_lookup: dict[str, dict[str, Any]] = {}
+        for e in start_entities:
+            start_lookup[str(e.id)] = {
+                "type": e.type.value,
+                "data": e.data,
+                "confidence": e.confidence,
+            }
+
+        return {
+            "start_entities": len(start_entities),
+            "relation_count": len(relations),
+            "relations": [
+                {
+                    "from": start_lookup.get(
+                        str(r.from_entity_id),
+                        connected_entities.get(str(r.from_entity_id), {}),
+                    ),
+                    "to": start_lookup.get(
+                        str(r.to_entity_id),
+                        connected_entities.get(str(r.to_entity_id), {}),
+                    ),
+                    "type": r.type.value,
+                    "metadata": r.relation_metadata,
+                }
+                for r in relations
+            ],
+        }
+
     async def _find_conflict(
         self,
         db: AsyncSession,
@@ -296,3 +475,4 @@ class KnowledgeGraph:
 
 
 knowledge_graph = KnowledgeGraph(event_store)
+

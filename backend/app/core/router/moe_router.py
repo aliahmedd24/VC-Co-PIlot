@@ -3,6 +3,7 @@ import time
 
 from app.core.router.intent_classifier import IntentClassifier
 from app.core.router.types import IntentCategory, ModelProfile, RoutingPlan
+from app.core.tools.registry import tool_registry
 from app.models.venture import VentureStage
 
 MENTION_ALIASES: dict[str, str] = {
@@ -149,7 +150,7 @@ class MoERouter:
         return RoutingPlan(
             selected_agent=agent_id,
             model_profile=AGENT_MODEL_PROFILES.get(agent_id, ModelProfile.DEFAULT),
-            tools=[],
+            tools=tool_registry.get_tool_names_for_agent(agent_id),
             artifact_needed=agent_id in ARTIFACT_AGENTS,
             fallback_agent="venture-architect",
             confidence=confidence,

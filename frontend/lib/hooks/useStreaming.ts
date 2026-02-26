@@ -6,6 +6,8 @@ import type {
   SendMessageRequest,
   SSERoutingEvent,
   SSEDoneEvent,
+  SSEToolCallEvent,
+  SSEToolResultEvent,
 } from "@/lib/types";
 
 interface StreamingState {
@@ -13,6 +15,8 @@ interface StreamingState {
   streamingContent: string;
   routingEvent: SSERoutingEvent | null;
   doneEvent: SSEDoneEvent | null;
+  activeTools: string[];
+  toolResults: string[];
   error: string | null;
 }
 
@@ -22,6 +26,8 @@ export function useStreaming() {
     streamingContent: "",
     routingEvent: null,
     doneEvent: null,
+    activeTools: [],
+    toolResults: [],
     error: null,
   });
 
@@ -38,6 +44,8 @@ export function useStreaming() {
         streamingContent: "",
         routingEvent: null,
         doneEvent: null,
+        activeTools: [],
+        toolResults: [],
         error: null,
       });
 
@@ -52,10 +60,24 @@ export function useStreaming() {
             streamingContent: contentRef.current,
           }));
         },
+        onToolCall: (data: SSEToolCallEvent) => {
+          setState((prev) => ({
+            ...prev,
+            activeTools: [...prev.activeTools, data.tool],
+          }));
+        },
+        onToolResult: (data: SSEToolResultEvent) => {
+          setState((prev) => ({
+            ...prev,
+            activeTools: prev.activeTools.filter((t) => t !== data.tool),
+            toolResults: [...prev.toolResults, data.tool],
+          }));
+        },
         onDone: (data: SSEDoneEvent) => {
           setState((prev) => ({
             ...prev,
             isStreaming: false,
+            activeTools: [],
             doneEvent: data,
           }));
           onComplete?.(data, contentRef.current);
@@ -64,6 +86,7 @@ export function useStreaming() {
           setState((prev) => ({
             ...prev,
             isStreaming: false,
+            activeTools: [],
             error: error.message,
           }));
         },
@@ -79,6 +102,8 @@ export function useStreaming() {
       streamingContent: "",
       routingEvent: null,
       doneEvent: null,
+      activeTools: [],
+      toolResults: [],
       error: null,
     });
   }, []);

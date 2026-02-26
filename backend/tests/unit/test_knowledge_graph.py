@@ -204,3 +204,285 @@ async def test_max_entities_per_type(db_session: AsyncSession) -> None:
             data={"name": "Risk 50"},
             confidence=0.3,
         )
+
+
+# --------------------------------------------------------------------------- #
+# search_entities_advanced
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_search_entities_advanced_confidence_filter(
+    db_session: AsyncSession,
+) -> None:
+    """search_entities_advanced filters by min_confidence."""
+    kg = KnowledgeGraph(EventStore())
+    venture = await _create_venture(db_session)
+
+    await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.COMPETITOR,
+        data={"name": "HighConf"},
+        confidence=0.9,
+    )
+    await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.COMPETITOR,
+        data={"name": "LowConf"},
+        confidence=0.3,
+    )
+    await db_session.commit()
+
+    results = await kg.search_entities_advanced(
+        db=db_session,
+        venture_id=venture.id,
+        min_confidence=0.8,
+    )
+    assert len(results) == 1
+    assert results[0].data["name"] == "HighConf"
+
+
+@pytest.mark.asyncio
+async def test_search_entities_advanced_status_filter(
+    db_session: AsyncSession,
+) -> None:
+    """search_entities_advanced filters by status."""
+    kg = KnowledgeGraph(EventStore())
+    venture = await _create_venture(db_session)
+
+    await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.MARKET,
+        data={"name": "Confirmed Market"},
+        confidence=0.9,
+    )
+    await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.MARKET,
+        data={"name": "Suggested Market"},
+        confidence=0.4,
+    )
+    await db_session.commit()
+
+    results = await kg.search_entities_advanced(
+        db=db_session,
+        venture_id=venture.id,
+        status_filter=KGEntityStatus.CONFIRMED,
+    )
+    assert len(results) == 1
+    assert results[0].data["name"] == "Confirmed Market"
+
+
+@pytest.mark.asyncio
+async def test_search_entities_advanced_combined_filters(
+    db_session: AsyncSession,
+) -> None:
+    """search_entities_advanced combines type + confidence + keyword."""
+    kg = KnowledgeGraph(EventStore())
+    venture = await _create_venture(db_session)
+
+    await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.COMPETITOR,
+        data={"name": "Alpha Corp"},
+        confidence=0.9,
+    )
+    await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.COMPETITOR,
+        data={"name": "Beta Corp"},
+        confidence=0.3,
+    )
+    await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.MARKET,
+        data={"name": "Alpha Market"},
+        confidence=0.9,
+    )
+    await db_session.commit()
+
+    # Only high-confidence competitors with "Alpha"
+    results = await kg.search_entities_advanced(
+        db=db_session,
+        venture_id=venture.id,
+        keyword="Alpha",
+        entity_types=[KGEntityType.COMPETITOR],
+        min_confidence=0.8,
+    )
+    assert len(results) == 1
+    assert results[0].data["name"] == "Alpha Corp"
+
+
+# --------------------------------------------------------------------------- #
+# get_relations
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_get_relations_outgoing(db_session: AsyncSession) -> None:
+    """get_relations direction=outgoing returns only outgoing edges."""
+    kg = KnowledgeGraph(EventStore())
+    venture = await _create_venture(db_session)
+
+    e1 = await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.PRODUCT,
+        data={"name": "Product A"},
+        confidence=0.8,
+    )
+    e2 = await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.ICP,
+        data={"name": "ICP One"},
+        confidence=0.8,
+    )
+    # Product TARGETS ICP
+    rel = KGRelation(
+        from_entity_id=e1.id,
+        to_entity_id=e2.id,
+        type=KGRelationType.TARGETS,
+    )
+    db_session.add(rel)
+    await db_session.flush()
+    await db_session.commit()
+
+    # Outgoing from product
+    outgoing = await kg.get_relations(
+        db=db_session,
+        entity_ids=[e1.id],
+        direction="outgoing",
+    )
+    assert len(outgoing) == 1
+    assert outgoing[0].to_entity_id == e2.id
+
+    # Incoming to product should be empty
+    incoming = await kg.get_relations(
+        db=db_session,
+        entity_ids=[e1.id],
+        direction="incoming",
+    )
+    assert len(incoming) == 0
+
+
+@pytest.mark.asyncio
+async def test_get_relations_with_type_filter(db_session: AsyncSession) -> None:
+    """get_relations filters by relation_type."""
+    kg = KnowledgeGraph(EventStore())
+    venture = await _create_venture(db_session)
+
+    e1 = await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.PRODUCT,
+        data={"name": "Widget"},
+        confidence=0.8,
+    )
+    e2 = await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.ICP,
+        data={"name": "SMB"},
+        confidence=0.8,
+    )
+    e3 = await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.PRODUCT,
+        data={"name": "Dependency"},
+        confidence=0.8,
+    )
+
+    db_session.add(KGRelation(
+        from_entity_id=e1.id, to_entity_id=e2.id,
+        type=KGRelationType.TARGETS,
+    ))
+    db_session.add(KGRelation(
+        from_entity_id=e1.id, to_entity_id=e3.id,
+        type=KGRelationType.DEPENDS_ON,
+    ))
+    await db_session.flush()
+    await db_session.commit()
+
+    # Only TARGETS
+    targets = await kg.get_relations(
+        db=db_session,
+        entity_ids=[e1.id],
+        relation_type=KGRelationType.TARGETS,
+    )
+    assert len(targets) == 1
+    assert targets[0].type == KGRelationType.TARGETS
+
+
+# --------------------------------------------------------------------------- #
+# traverse
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.asyncio
+async def test_traverse_returns_connected_entities(db_session: AsyncSession) -> None:
+    """traverse follows one hop and returns full entity data."""
+    kg = KnowledgeGraph(EventStore())
+    venture = await _create_venture(db_session)
+
+    product = await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.PRODUCT,
+        data={"name": "SaaS Platform"},
+        confidence=0.9,
+    )
+    icp = await kg.create_entity(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.ICP,
+        data={"name": "Enterprise"},
+        confidence=0.85,
+    )
+    db_session.add(KGRelation(
+        from_entity_id=product.id,
+        to_entity_id=icp.id,
+        type=KGRelationType.TARGETS,
+    ))
+    await db_session.flush()
+    await db_session.commit()
+
+    result = await kg.traverse(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.PRODUCT,
+        relation_type=KGRelationType.TARGETS,
+        direction="outgoing",
+    )
+    assert result["start_entities"] == 1
+    assert result["relation_count"] == 1
+    assert len(result["relations"]) == 1
+    rel_data = result["relations"][0]
+    assert rel_data["from"]["data"]["name"] == "SaaS Platform"
+    assert rel_data["to"]["data"]["name"] == "Enterprise"
+    assert rel_data["type"] == "targets"
+
+
+@pytest.mark.asyncio
+async def test_traverse_no_matching_entities(db_session: AsyncSession) -> None:
+    """traverse returns empty result when no entities match."""
+    kg = KnowledgeGraph(EventStore())
+    venture = await _create_venture(db_session)
+
+    result = await kg.traverse(
+        db=db_session,
+        venture_id=venture.id,
+        entity_type=KGEntityType.RISK,
+        entity_name="nonexistent",
+    )
+    assert result["start_entities"] == 0
+    assert result["relations"] == []
+    assert "message" in result

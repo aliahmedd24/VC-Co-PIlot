@@ -87,12 +87,12 @@ async def _sse_event_stream(
     user_id: str,
     db: AsyncSession,
 ) -> AsyncIterator[str]:
-    """Generate SSE events: routing → token* → done."""
+    """Generate SSE events: routing → token*/tool_call/tool_result → done."""
     # Event 1: routing metadata
     routing_data = routing_plan.model_dump()
     yield f"event: routing\ndata: {json.dumps(routing_data)}\n\n"
 
-    # Events 2..N: token stream
+    # Events 2..N: token stream (with tool markers)
     full_content: list[str] = []
     async for token in agent.execute_streaming(
         prompt=prompt,
@@ -103,8 +103,16 @@ async def _sse_event_stream(
         session_id=str(session.id),
         user_id=user_id,
     ):
-        full_content.append(token)
-        yield f"event: token\ndata: {json.dumps(token)}\n\n"
+        # Check for special tool markers from _stream_claude_with_tools
+        if token.startswith("__TOOL_CALL__"):
+            tool_name = token.removeprefix("__TOOL_CALL__")
+            yield f"event: tool_call\ndata: {json.dumps({'tool': tool_name})}\n\n"
+        elif token.startswith("__TOOL_RESULT__"):
+            tool_name = token.removeprefix("__TOOL_RESULT__")
+            yield f"event: tool_result\ndata: {json.dumps({'tool': tool_name})}\n\n"
+        else:
+            full_content.append(token)
+            yield f"event: token\ndata: {json.dumps(token)}\n\n"
 
     # Save complete assistant message
     complete_text = "".join(full_content)

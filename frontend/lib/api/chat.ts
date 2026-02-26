@@ -40,6 +40,8 @@ export interface StreamCallbacks {
   onToken: (token: string) => void;
   onDone: (data: import("@/lib/types").SSEDoneEvent) => void;
   onError: (error: Error) => void;
+  onToolCall?: (data: import("@/lib/types").SSEToolCallEvent) => void;
+  onToolResult?: (data: import("@/lib/types").SSEToolResultEvent) => void;
 }
 
 export async function sendMessageStreaming(
@@ -95,6 +97,10 @@ export async function sendMessageStreaming(
             callbacks.onRouting(JSON.parse(data));
           } else if (currentEvent === "token") {
             callbacks.onToken(JSON.parse(data));
+          } else if (currentEvent === "tool_call") {
+            callbacks.onToolCall?.(JSON.parse(data));
+          } else if (currentEvent === "tool_result") {
+            callbacks.onToolResult?.(JSON.parse(data));
           } else if (currentEvent === "done") {
             callbacks.onDone(JSON.parse(data));
           }

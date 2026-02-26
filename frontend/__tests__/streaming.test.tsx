@@ -50,4 +50,55 @@ describe("StreamingMessage", () => {
 
     expect(screen.getByText("Generating...")).toBeInTheDocument();
   });
+
+  test("shows active tool indicators", () => {
+    render(
+      <StreamingMessage
+        content=""
+        routingEvent={mockRoutingEvent}
+        activeTools={["run_valuation"]}
+        toolResults={[]}
+      />
+    );
+
+    // Should show tool activity area
+    expect(screen.getByTestId("tool-activity")).toBeInTheDocument();
+    // Active tool pill should be rendered
+    expect(screen.getByTestId("tool-active-run_valuation")).toBeInTheDocument();
+    // Should display gerund-form label
+    expect(screen.getByText("Running Valuation")).toBeInTheDocument();
+    // Loading text should reference the tool
+    expect(screen.getByText("Using Running Valuation...")).toBeInTheDocument();
+  });
+
+  test("shows completed tool results", () => {
+    render(
+      <StreamingMessage
+        content="Analysis complete"
+        routingEvent={mockRoutingEvent}
+        activeTools={[]}
+        toolResults={["score_readiness", "run_valuation"]}
+      />
+    );
+
+    // Completed tool pills should be rendered
+    expect(screen.getByTestId("tool-done-score_readiness")).toBeInTheDocument();
+    expect(screen.getByTestId("tool-done-run_valuation")).toBeInTheDocument();
+    expect(screen.getByText("Scoring Readiness")).toBeInTheDocument();
+    expect(screen.getByText("Running Valuation")).toBeInTheDocument();
+  });
+
+  test("shows both active and completed tools simultaneously", () => {
+    render(
+      <StreamingMessage
+        content="Working on it..."
+        routingEvent={mockRoutingEvent}
+        activeTools={["search_brain"]}
+        toolResults={["query_entities"]}
+      />
+    );
+
+    expect(screen.getByTestId("tool-active-search_brain")).toBeInTheDocument();
+    expect(screen.getByTestId("tool-done-query_entities")).toBeInTheDocument();
+  });
 });

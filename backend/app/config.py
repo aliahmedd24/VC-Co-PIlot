@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Anthropic (entity extraction)
     anthropic_api_key: str = ""
 
+    # Tavily (web search for agents)
+    tavily_api_key: str = ""
+
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
 

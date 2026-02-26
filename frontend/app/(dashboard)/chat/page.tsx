@@ -157,6 +157,8 @@ export default function ChatPage() {
                 <StreamingMessage
                   content={streaming.streamingContent}
                   routingEvent={streaming.routingEvent}
+                  activeTools={streaming.activeTools}
+                  toolResults={streaming.toolResults}
                 />
               )}
 
