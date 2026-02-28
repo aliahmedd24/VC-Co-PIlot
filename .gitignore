@@ -55,6 +55,6 @@ minio_data/
 # Alembic
 backend/alembic/versions/__pycache__/
 
-#Claude
-.claude
+# Claude
+.claude/
 logs.md
