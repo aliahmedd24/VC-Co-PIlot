@@ -44,6 +44,23 @@ AI VC Co-Pilot is a full-stack platform that provides founders and venture consu
 - **Intelligent routing** via keyword-based intent classification across 12 intent categories
 - **Cross-agent delegation** with recursion guards
 
+### 📚 Agent Skill System
+Each agent is equipped with **domain-specific skill files** (`SKILL.md`) that are injected into its system prompt at runtime, giving it deep expertise in its area:
+
+- **11 agent-specific SKILL.md files** — comprehensive domain knowledge including frameworks, methodologies, templates, decision trees, and response patterns (e.g., Venture Architect has Lean Canvas methodology, JTBD framework, experiment design, and pivot decision trees; ICP Profiler has segmentation methods, persona templates, and validation signals)
+- **5 shared knowledge bases** loaded selectively per agent via `SkillLoader`:
+
+  | Shared Skill | Content | Used By |
+  |---|---|---|
+  | `vc_fundamentals.md` | VC ecosystem, term sheets, cap tables | 7 agents |
+  | `fundraising_stages.md` | Pre-seed → Series C stage definitions | 7 agents |
+  | `market_sizing.md` | TAM/SAM/SOM, top-down/bottom-up analysis | 3 agents |
+  | `saas_metrics.md` | MRR, churn, LTV, CAC, unit economics | 4 agents |
+  | `red_flags.md` | Investor red flags & common pitfalls | 3 agents |
+
+- **Reference directories** — additional material (guides, templates, examples) for agents like venture-architect, valuation-strategist, deck-architect, market-oracle, and pre-mortem-critic
+- **`SkillLoader`** singleton — loads agent skills, shared knowledge, and reference files at runtime with path-traversal protection
+
 ### 🧠 Startup Brain
 - **Knowledge Graph** — Entity extraction (via Claude), conflict detection, CRUD operations, confidence scoring, and advanced traversal
 - **RAG Retriever** — Freshness-weighted pgvector semantic search
@@ -318,9 +335,12 @@ pnpm build         # Type-check + production build
 │   │   │   ├── router/       # MoE router + intent classifier
 │   │   │   ├── scoring/      # Investor readiness scorer
 │   │   │   ├── scenario/     # Scenario modeler
-│   │   │   ├── skills/       # Skill loader (YAML-based agent skills)
+│   │   │   ├── skills/       # SkillLoader class for agent expertise injection
 │   │   │   ├── tools/        # Tool registry, executor, 14 tool handlers
 │   │   ├── mcp/              # MCP servers (analytics, brain, research, memory) + client
+│   │   ├── skills/           # 11 SKILL.md files + shared knowledge + references
+│   │   │   ├── {agent-name}/ # Per-agent SKILL.md + optional references/
+│   │   │   └── shared/       # vc_fundamentals, fundraising_stages, market_sizing, etc.
 │   │   │   ├── success_stories/  # Success story matcher
 │   │   │   └── valuation/    # Valuation engine
 │   │   ├── models/           # SQLAlchemy models
